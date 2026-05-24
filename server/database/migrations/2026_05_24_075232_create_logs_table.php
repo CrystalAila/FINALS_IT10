@@ -11,12 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('users', function (Blueprint $table) {
+        Schema::create('logs', function (Blueprint $table) {
             $table->id();
-            $table->string('fullname');
-            $table->string('username')->unique();
-            $table->string('password');
-            $table->enum('role', ['customer', 'reseller', 'admin'])->default('customer');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->text('activity');
             $table->timestamps();
         });
     }
@@ -26,8 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
-        Schema::dropIfExists('sessions');
+        Schema::dropIfExists('logs');
     }
 };
