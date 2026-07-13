@@ -1,45 +1,58 @@
-import { useState } from 'react';
-import type { FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AuthLayout from '../components/customer/AuthLayout';
-import GoogleLoginButton from '../components/customer/GoogleLoginButton';
 
-const Register: React.FC = () => {
+const SellerRegister: React.FC = () => {
   const [fullname, setFullname] = useState('');
-  const [username, setUsername] = useState('');
+  const [businessName, setBusinessName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { register, loading, googleLogin } = useAuth();
+  const { register, loading } = useAuth();
   const navigate = useNavigate();
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     try {
-      const user = await register({ fullname, username, password, email: email || undefined, phone: phone || undefined });
-      if (user.role === 'admin') navigate('/admin/dashboard');
-      else if (user.role === 'seller' || user.role === 'reseller') navigate('/seller/dashboard');
-      else navigate('/customer');
+      const user = await register({
+        fullname,
+        username: businessName.replace(/\s+/g, '').toLowerCase().slice(0, 20),
+        password,
+        email: email || undefined,
+        phone: phone || undefined,
+        business_name: businessName,
+        role: 'seller',
+        status: 'pending',
+      });
+
+      if (user.role === 'seller' || user.role === 'reseller') {
+        navigate('/seller/dashboard', {
+          state: { message: 'Your shop is under review. Please upload your LGU permit.' },
+        });
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       setError(err?.response?.data?.message ?? err?.response?.data?.errors?.username?.[0] ?? 'Registration failed');
     }
   };
 
-  const handleGoogleSuccess = (user: { id: number; fullname: string; username: string; role: string }) => {
-    const token = localStorage.getItem('poultry_token');
-    if (token) googleLogin(user as any, token);
-    navigate('/customer');
-  };
-
   return (
     <AuthLayout
-      title="Create account"
-      subtitle="Join PoultryLink and order fresh poultry"
+      title="Register as a seller"
+      subtitle="Submit your shop details and start selling on PoultryLink"
       footer={
         <p className="mt-6 text-center text-sm text-gray-500">
           Already have an account?{' '}
@@ -55,7 +68,9 @@ const Register: React.FC = () => {
 
       <form onSubmit={submit} className="mt-8 space-y-4">
         <div>
-          <label htmlFor="fullname" className="mb-1.5 block text-sm font-semibold text-gray-700">Full name</label>
+          <label htmlFor="fullname" className="mb-1.5 block text-sm font-semibold text-gray-700">
+            Full Name
+          </label>
           <input
             id="fullname"
             value={fullname}
@@ -64,38 +79,52 @@ const Register: React.FC = () => {
             required
           />
         </div>
+
         <div>
-          <label htmlFor="username" className="mb-1.5 block text-sm font-semibold text-gray-700">Username</label>
+          <label htmlFor="businessName" className="mb-1.5 block text-sm font-semibold text-gray-700">
+            Business Name
+          </label>
           <input
-            id="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            id="businessName"
+            value={businessName}
+            onChange={(e) => setBusinessName(e.target.value)}
             className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
             required
           />
         </div>
+
         <div>
-          <label htmlFor="email" className="mb-1.5 block text-sm font-semibold text-gray-700">Email (optional)</label>
+          <label htmlFor="email" className="mb-1.5 block text-sm font-semibold text-gray-700">
+            Email
+          </label>
           <input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+            required
           />
         </div>
+
         <div>
-          <label htmlFor="phone" className="mb-1.5 block text-sm font-semibold text-gray-700">Phone (optional)</label>
+          <label htmlFor="phone" className="mb-1.5 block text-sm font-semibold text-gray-700">
+            Phone
+          </label>
           <input
             id="phone"
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+            required
           />
         </div>
+
         <div>
-          <label htmlFor="password" className="mb-1.5 block text-sm font-semibold text-gray-700">Password</label>
+          <label htmlFor="password" className="mb-1.5 block text-sm font-semibold text-gray-700">
+            Password
+          </label>
           <div className="relative">
             <input
               id="password"
@@ -116,27 +145,31 @@ const Register: React.FC = () => {
           </div>
         </div>
 
+        <div>
+          <label htmlFor="confirmPassword" className="mb-1.5 block text-sm font-semibold text-gray-700">
+            Confirm Password
+          </label>
+          <input
+            id="confirmPassword"
+            type={showPassword ? 'text' : 'password'}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+            required
+            minLength={6}
+          />
+        </div>
+
         <button
           type="submit"
           disabled={loading}
           className="w-full rounded-full bg-brand py-3.5 font-bold text-white shadow-lg shadow-brand/25 transition hover:bg-brand-dark disabled:opacity-60"
         >
-          {loading ? 'Creating account...' : 'Create Account'}
+          {loading ? 'Registering seller...' : 'Register as Seller'}
         </button>
       </form>
-
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-200" />
-        </div>
-        <div className="relative flex justify-center text-sm">
-          <span className="bg-white px-3 text-gray-500">or</span>
-        </div>
-      </div>
-
-      <GoogleLoginButton onSuccess={handleGoogleSuccess} onError={setError} disabled={loading} />
     </AuthLayout>
   );
 };
 
-export default Register;
+export default SellerRegister;

@@ -18,7 +18,7 @@ const Login: React.FC = () => {
 
   const redirectByRole = (role: string) => {
     if (role === 'customer') navigate('/customer');
-    else if (role === 'reseller') navigate('/reseller/dashboard');
+    else if (role === 'reseller' || role === 'seller') navigate('/seller/dashboard');
     else if (role === 'admin') navigate('/admin/dashboard');
     else navigate('/');
   };
@@ -53,7 +53,16 @@ const Login: React.FC = () => {
               Register
             </Link>
           </p>
-          <div className="mt-8 rounded-xl bg-gray-50 p-4 text-xs text-gray-500">
+          <div className="mt-4 flex flex-col gap-3 rounded-3xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-700">
+            <p className="font-semibold text-orange-800">Want to sell on PoultryLink?</p>
+            <Link
+              to="/seller-register"
+              className="inline-flex w-full items-center justify-center rounded-full bg-orange-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-500/20 transition hover:bg-orange-700"
+            >
+              Register as Seller
+            </Link>
+          </div>
+          <div className="mt-6 rounded-xl bg-gray-50 p-4 text-xs text-gray-500">
             <p className="font-semibold text-gray-700">Demo accounts</p>
             <p className="mt-1">Customer: <code>customer</code> / <code>password123</code></p>
             <p>Admin: <code>admin</code> / <code>password123</code></p>

@@ -19,10 +19,13 @@ class AuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'fullname' => ['required', 'string', 'max:255', 'regex:/^[\pL\s\.\'\-]+$/u'],
+            'business_name' => ['nullable', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:255', 'alpha_num', 'unique:users,username'],
             'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:30'],
             'password' => ['required', 'string', 'min:6', 'max:72'],
+            'role' => ['nullable', 'in:customer,reseller,seller,admin'],
+            'status' => ['nullable', 'in:pending,active,suspended'],
         ]);
 
         if ($validator->fails()) {
@@ -33,11 +36,13 @@ class AuthController extends Controller
 
         $user = User::create([
             'fullname' => $data['fullname'],
+            'business_name' => $data['business_name'] ?? null,
             'username' => $data['username'],
             'email' => $data['email'] ?? null,
             'phone' => $data['phone'] ?? null,
             'password' => Hash::make($data['password']),
-            'role' => 'customer',
+            'role' => $data['role'] ?? 'customer',
+            'status' => $data['status'] ?? (($data['role'] ?? 'customer') === 'seller' ? 'pending' : 'active'),
         ]);
 
         $token = $user->createToken('api-token')->plainTextToken;

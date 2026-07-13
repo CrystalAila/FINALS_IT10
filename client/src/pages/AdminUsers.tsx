@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import api from '../lib/axios';
 import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
+import AdminLayout from '../layouts/AdminLayout';
 
 type User = {
   id: number;
@@ -18,7 +18,7 @@ const initialForm = {
   fullname: '',
   username: '',
   password: '',
-  role: 'customer' as User['role'],
+  role: 'reseller' as User['role'],
 };
 
 const AdminUsers = () => {
@@ -136,166 +136,238 @@ const AdminUsers = () => {
   };
 
   return (
-    <div style={{ padding: '2rem' }}>
-        <div style={{ padding: '2rem 4rem', width: '100vw', boxSizing: 'border-box', marginLeft: '50%', transform: 'translateX(-50%)' }}>
-        <div className="page-heading" style={{ marginBottom: '2rem' }}>
-            <div>
-            <div className="status-pill success" style={{ display: 'inline-block' }}>Admin user management</div>
-            <h2 style={{ fontSize: '2rem', margin: '0.5rem 0' }}>User Management</h2>
-            <p style={{ color: '#6b7280' }}>View, add, edit and delete users for Capiz PoultryLink.</p>
-            </div>
+    <AdminLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="rounded-3xl border border-emerald-900 bg-emerald-950 p-6 text-emerald-100 shadow-sm">
+          <p className="text-sm uppercase tracking-[0.2em] text-emerald-300">User Management</p>
+          <h1 className="mt-3 text-3xl font-semibold">Manage system users</h1>
+          <p className="mt-2 max-w-2xl text-slate-300">
+            View, add, edit and delete users for PoultryLink. Manage customers, sellers, and admin accounts.
+          </p>
         </div>
 
-        <div className="admin-layout" style={{ width: '100%', display: 'block' }}>
-            <main className="card" style={{ minHeight: 420, width: '100%', padding: '2.5rem', boxSizing: 'border-box' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '2rem', marginBottom: '2rem' }}>
-                <div>
-                <h3 className="card-title" style={{ margin: 0, fontSize: '1.5rem', fontWeight: 'bold' }}>All Users</h3>
-                <Link to="/admin/dashboard" className="btn btn-secondary btn-sm" style={{ marginTop: '0.75rem', display: 'inline-block' }}>Back to dashboard</Link>
-                </div>
-                <button
-                type="button"
-                className="btn btn-primary btn-large"
-                onClick={() => {
-                    resetForm();
-                    setModalMode('add');
-                    setSelectedUser(null);
-                    setShowModal(true);
-                }}
-                style={{ padding: '0.75rem 1.75rem', fontWeight: 'bold' }}
-                >
-                + Add User
-                </button>
+        {/* User List Card */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-slate-500">System users</p>
+              <h2 className="text-2xl font-semibold text-slate-900">All Users ({users.length})</h2>
             </div>
-            
-            <div style={{ width: '100%' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                    <tr>
-                    <th style={{ textAlign: 'left', padding: '1rem', color: '#6b7280', fontWeight: '600' }}>Name</th>
-                    <th style={{ textAlign: 'left', padding: '1rem', color: '#6b7280', fontWeight: '600' }}>Username</th>
-                    <th style={{ textAlign: 'left', padding: '1rem', color: '#6b7280', fontWeight: '600' }}>Role</th>
-                    <th style={{ textAlign: 'right', padding: '1rem', color: '#6b7280', fontWeight: '600' }}>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {users.map((userItem) => (
-                    <tr key={userItem.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '1.25rem 1rem' }}>{userItem.fullname}</td>
-                        <td style={{ padding: '1.25rem 1rem' }}>{userItem.username}</td>
-                        <td style={{ padding: '1.25rem 1rem', textTransform: 'capitalize' }}>{userItem.role}</td>
-                        <td style={{ padding: '1.25rem 1rem', textAlign: 'right' }}>
+            <button
+              type="button"
+              className="rounded-2xl bg-emerald-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-900"
+              onClick={() => {
+                resetForm();
+                setModalMode('add');
+                setSelectedUser(null);
+                setShowModal(true);
+              }}
+            >
+              + Add User
+            </button>
+          </div>
+
+          {error && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 mb-4">
+              <p className="text-sm font-semibold text-red-800">{error}</p>
+            </div>
+          )}
+          {success && (
+            <div className="rounded-2xl border border-green-200 bg-green-50 p-4 mb-4">
+              <p className="text-sm font-semibold text-green-800">{success}</p>
+            </div>
+          )}
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600">Name</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600">Username</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600">Role</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600">Created</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((userItem) => (
+                  <tr key={userItem.id} className="border-b border-slate-100 hover:bg-slate-50 transition">
+                    <td className="py-3 px-4 font-medium text-slate-900">{userItem.fullname}</td>
+                    <td className="py-3 px-4 text-slate-600">{userItem.username}</td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-block rounded-2xl px-3 py-1 text-xs font-semibold ${
+                        userItem.role === 'admin'
+                          ? 'bg-red-100 text-red-800'
+                          : userItem.role === 'reseller'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-slate-100 text-slate-800'
+                      }`}>
+                        {userItem.role.charAt(0).toUpperCase() + userItem.role.slice(1)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-slate-600">
+                      {new Date(userItem.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex gap-2">
                         <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => handleEdit(userItem)}
-                            style={{ marginRight: '0.5rem' }}
+                          type="button"
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                          onClick={() => handleEdit(userItem)}
+                          disabled={userItem.role === 'customer' || userItem.role === 'seller'}
+                          title={userItem.role === 'customer' || userItem.role === 'seller' ? 'Cannot edit this role' : ''}
                         >
-                            Edit
+                          Edit
                         </button>
                         <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => handleDelete(userItem.id)}
-                            disabled={user?.id === userItem.id}
+                          type="button"
+                          className="rounded-lg border border-red-300 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                          onClick={() => handleDelete(userItem.id)}
+                          disabled={user?.id === userItem.id || userItem.role === 'customer' || userItem.role === 'seller'}
+                          title={userItem.role === 'customer' || userItem.role === 'seller' ? 'Cannot delete this role' : ''}
                         >
-                            Delete
+                          Delete
                         </button>
-                        </td>
-                    </tr>
-                    ))}
-                    {users.length === 0 ? (
-                    <tr>
-                        <td colSpan={4} style={{ padding: '3rem 0', color: '#6b7280', textAlign: 'center' }}>
-                        {loading ? 'Loading users …' : 'No users found.'}
-                        </td>
-                    </tr>
-                    ) : null}
-                </tbody>
-                </table>
-            </div>
-            </main>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-8 px-4 text-center text-slate-600">
+                      {loading ? 'Loading users…' : 'No users found.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-    <aside className="card" style={{ display: 'none' }} />
-  </div>
-</div>
-
-      {showModal ? (
-        <div className="modal-backdrop" onClick={() => { setShowModal(false); setSelectedUser(null); }}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+      {/* Modal */}
+      {showModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => {
+            setShowModal(false);
+            setSelectedUser(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
             {modalMode === 'confirm' ? (
               <div>
-                <h3 className="card-title">Confirm delete</h3>
-                <p>Are you sure you want to delete <strong>{selectedUser?.fullname}</strong>?</p>
-                <div className="modal-actions">
-                  <button className="btn btn-secondary" onClick={() => { setShowModal(false); setSelectedUser(null); }}>Cancel</button>
-                  <button className="btn btn-primary" onClick={confirmDelete} disabled={loading} style={{ marginLeft: '0.75rem' }}>Delete</button>
+                <h3 className="text-xl font-semibold text-slate-900">Confirm Delete</h3>
+                <p className="mt-3 text-slate-600">
+                  Are you sure you want to delete <strong>{selectedUser?.fullname}</strong>?
+                </p>
+                <div className="mt-6 flex gap-3">
+                  <button
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    onClick={() => {
+                      setShowModal(false);
+                      setSelectedUser(null);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+                    onClick={confirmDelete}
+                    disabled={loading}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ) : (
               <div>
-                <h3 className="card-title">{modalMode === 'add' ? 'Add User' : 'Edit User'}</h3>
-                {error && <div className="alert">{error}</div>}
-                {success && <div className="card-copy" style={{ color: '#064e3b', marginBottom: '1rem' }}>{success}</div>}
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="fullname">Full name</label>
+                <h3 className="text-xl font-semibold text-slate-900">
+                  {modalMode === 'add' ? 'Add User' : 'Edit User'}
+                </h3>
+                {error && (
+                  <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                    <p className="text-sm text-red-800">{error}</p>
+                  </div>
+                )}
+                {success && (
+                  <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3">
+                    <p className="text-sm text-green-800">{success}</p>
+                  </div>
+                )}
+                <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Full Name</label>
                     <input
-                      id="fullname"
                       value={form.fullname}
                       onChange={(e) => setField('fullname', e.target.value)}
-                      className="form-control"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500"
                       required
                     />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="username">Username</label>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Username</label>
                     <input
-                      id="username"
                       value={form.username}
                       onChange={(e) => setField('username', e.target.value)}
-                      className="form-control"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500"
                       required
                     />
                   </div>
-                  <div className="form-group password-field-wrapper">
-                    <label className="form-label" htmlFor="password">Password</label>
-                    <input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={form.password}
-                      onChange={(e) => setField('password', e.target.value)}
-                      className="form-control"
-                      placeholder={form.id ? 'Leave blank to keep current password' : 'Enter a password'}
-                      {...(!form.id ? { required: true } : {})}
-                    />
-                    <button
-                      type="button"
-                      className="password-toggle"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                    >
-                      {showPassword ? 'Hide' : 'Show'}
-                    </button>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={form.password}
+                        onChange={(e) => setField('password', e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                        placeholder={form.id ? 'Leave blank to keep current password' : 'Enter a password'}
+                        {...(!form.id ? { required: true } : {})}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-600"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="role">Role</label>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Role</label>
                     <select
-                      id="role"
                       value={form.role}
                       onChange={(e) => setField('role', e.target.value)}
-                      className="form-control"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500"
                       required
                     >
-                      <option value="customer">Customer</option>
                       <option value="reseller">Reseller</option>
                       <option value="admin">Admin</option>
                     </select>
                   </div>
-                  <div className="form-actions">
-                    <button type="submit" className="btn btn-primary" disabled={loading}>
-                      {form.id ? 'Save changes' : 'Create user'}
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="submit"
+                      className="flex-1 rounded-lg bg-emerald-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-900 disabled:opacity-50"
+                      disabled={loading}
+                    >
+                      {form.id ? 'Save Changes' : 'Create User'}
                     </button>
-                    <button type="button" className="btn btn-secondary" onClick={() => { setShowModal(false); setSelectedUser(null); }} style={{ marginLeft: '0.75rem' }}>
+                    <button
+                      type="button"
+                      className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                      onClick={() => {
+                        setShowModal(false);
+                        setSelectedUser(null);
+                        resetForm();
+                      }}
+                    >
                       Cancel
                     </button>
                   </div>
@@ -304,8 +376,8 @@ const AdminUsers = () => {
             )}
           </div>
         </div>
-      ) : null}
-    </div>
+      )}
+    </AdminLayout>
   );
 };
 

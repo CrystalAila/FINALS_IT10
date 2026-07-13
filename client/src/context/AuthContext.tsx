@@ -5,10 +5,12 @@ export type User = {
   id: number;
   fullname: string;
   username: string;
+  business_name?: string | null;
   email?: string | null;
   phone?: string | null;
   google_id?: string | null;
-  role: 'customer' | 'reseller' | 'admin';
+  role: 'customer' | 'reseller' | 'seller' | 'admin';
+  status?: 'pending' | 'active' | 'suspended';
 };
 
 type AuthContextType = {
@@ -19,10 +21,12 @@ type AuthContextType = {
   register: (payload: {
     fullname: string;
     username: string;
+    business_name?: string;
     password: string;
     email?: string;
     phone?: string;
     role?: string;
+    status?: string;
   }) => Promise<User>;
   googleLogin: (user: User, token: string) => void;
   updateProfile: (payload: {
@@ -41,9 +45,13 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const normalizeRole = (role: string) => (role === 'reseller' ? 'seller' : role as User['role']);
+
   const [user, setUser] = useState<User | null>(() => {
     const raw = localStorage.getItem('poultry_user');
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as User;
+    return { ...saved, role: normalizeRole(saved.role) };
   });
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('poultry_token'));
   const [loading, setLoading] = useState(false);
@@ -71,7 +79,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         const res = await api.get('/user');
-        setUser(res.data.user);
+        const userData = res.data.user as User;
+        const normalizedUser = { ...userData, role: normalizeRole(userData.role) };
+        setUser(normalizedUser);
       } catch {
         setUser(null);
         setToken(null);
@@ -82,9 +92,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const persistSession = (u: User, t: string) => {
+    const normalizedUser = { ...u, role: normalizeRole(u.role) };
     localStorage.setItem('poultry_token', t);
-    localStorage.setItem('poultry_user', JSON.stringify(u));
-    setUser(u);
+    localStorage.setItem('poultry_user', JSON.stringify(normalizedUser));
+    setUser(normalizedUser);
     setToken(t);
   };
 
@@ -108,10 +119,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (payload: {
     fullname: string;
     username: string;
+    business_name?: string;
     password: string;
     email?: string;
     phone?: string;
     role?: string;
+    status?: string;
   }) => {
     setLoading(true);
     try {
