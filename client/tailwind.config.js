@@ -1,27 +1,25 @@
+/** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        sidebar: {
-          DEFAULT: '#ff6200',
-          dark: '#e55a00',
-        },
         brand: {
-          DEFAULT: '#ff6200',
-          dark: '#ff8a00',
+          DEFAULT: '#FF6B00',
+          dark: '#E55F00',
+          light: '#FF8A33',
         },
-        background: '#faf7f2',
-        card: '#ffffff',
-        text: '#1f2937',
-        muted: '#6b7280',
-        success: '#10b981',
-        danger: '#ef4444',
-        warning: '#f59e0b',
-        border: '#e5e7eb',
+        customer: {
+          bg: '#F0FDF4',
+          dark: '#14532D',
+        },
+        login: {
+          green: '#166534',
+        },
       },
       boxShadow: {
-        card: '0 18px 60px rgba(15, 23, 42, 0.08)',
+        card: '0 4px 24px rgba(0, 0, 0, 0.06)',
+        nav: '0 2px 12px rgba(0, 0, 0, 0.04)',
       },
     },
   },

@@ -17,6 +17,9 @@ class User extends Authenticatable
     protected $fillable = [
         'fullname',
         'username',
+        'email',
+        'phone',
+        'google_id',
         'password',
         'role',
     ];
@@ -35,5 +38,10 @@ class User extends Authenticatable
     public function logs()
     {
         return $this->hasMany(Log::class);
+    }
+
+    public function addresses()
+    {
+        return $this->hasMany(Address::class);
     }
 }
