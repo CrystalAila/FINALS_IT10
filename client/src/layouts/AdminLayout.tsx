@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import AdminSidebar from '../components/admin/AdminSidebar';
 
 const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {

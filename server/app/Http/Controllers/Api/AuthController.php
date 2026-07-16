@@ -12,21 +12,47 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
+use Illuminate\Support\Carbon;
 
 class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        if ($request->input('role') === 'seller') {
+            if (!$request->filled('username') && $request->filled('business_name')) {
+                // Generate username from business_name
+                $baseUsername = Str::slug($request->input('business_name'), '');
+                $baseUsername = preg_replace('/[^A-Za-z0-9]/', '', $baseUsername);
+                if (empty($baseUsername)) {
+                    $baseUsername = 'seller_' . Str::random(6);
+                }
+                $username = substr($baseUsername, 0, 20);
+                $suffix = 1;
+                while (User::where('username', $username)->exists()) {
+                    $username = substr($baseUsername, 0, 15) . $suffix;
+                    $suffix++;
+                }
+                $request->merge(['username' => $username]);
+            }
+        }
+
+        $rules = [
             'fullname' => ['required', 'string', 'max:255', 'regex:/^[\pL\s\.\'\-]+$/u'],
-            'business_name' => ['nullable', 'string', 'max:255'],
+            'business_name' => [$request->input('role') === 'seller' ? 'required' : 'nullable', 'string', 'max:255', $request->input('role') === 'seller' ? 'unique:users,business_name' : ''],
             'username' => ['required', 'string', 'max:255', 'alpha_num', 'unique:users,username'],
             'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:30'],
             'password' => ['required', 'string', 'min:6', 'max:72'],
             'role' => ['nullable', 'in:customer,reseller,seller,admin'],
-            'status' => ['nullable', 'in:pending,active,suspended'],
-        ]);
+            'status' => ['nullable', 'in:pending,under_review,active,suspended,verified,rejected'],
+        ];
+
+        if ($request->input('role') === 'seller') {
+            $rules['permit'] = ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'];
+            $rules['permit_issue_date'] = ['required', 'date'];
+        }
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
@@ -42,8 +68,38 @@ class AuthController extends Controller
             'phone' => $data['phone'] ?? null,
             'password' => Hash::make($data['password']),
             'role' => $data['role'] ?? 'customer',
-            'status' => $data['status'] ?? (($data['role'] ?? 'customer') === 'seller' ? 'pending' : 'active'),
+            'status' => $data['status'] ?? 'active',
         ]);
+
+        if (in_array($user->role, ['seller', 'reseller'])) {
+            $permitPath = null;
+            if ($request->hasFile('permit')) {
+                $permitPath = $request->file('permit')->store('permits', 'public');
+            }
+
+            $issueDate = $request->input('permit_issue_date') ? Carbon::parse($request->input('permit_issue_date')) : null;
+            $expiryDate = $issueDate ? $issueDate->copy()->addYear()->toDateString() : null;
+
+            $farmStatus = $user->status === 'verified' ? 'approved' : 'pending';
+
+            if ($expiryDate && Carbon::parse($expiryDate)->isPast()) {
+                $farmStatus = 'suspended';
+                $user->status = 'suspended';
+                $user->save();
+            }
+
+            \App\Models\Farm::create([
+                'user_id' => $user->id,
+                'name' => $data['business_name'] ?? ($user->fullname . ' Farm'),
+                'permit_status' => $farmStatus,
+                'permit_file' => $permitPath,
+                'permit_issue_date' => $issueDate ? $issueDate->toDateString() : null,
+                'permit_expiry_date' => $expiryDate,
+                'location' => 'Roxas City, Capiz', // Default placeholder location
+                'description' => 'Newly registered local poultry farm.',
+                'rating' => 5.0,
+            ]);
+        }
 
         $token = $user->createToken('api-token')->plainTextToken;
 
@@ -54,16 +110,28 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'username' => ['required', 'string', 'alpha_num'],
+        $rules = [
             'password' => ['required', 'string', 'min:6', 'max:72'],
-        ]);
+        ];
+
+        if ($request->filled('business_name')) {
+            $rules['business_name'] = ['required', 'string', 'max:255'];
+        } else {
+            $rules['username'] = ['required', 'string', 'alpha_num'];
+        }
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = User::where('username', $request->input('username'))->first();
+        $user = null;
+        if ($request->filled('business_name')) {
+            $user = User::where('business_name', $request->input('business_name'))->first();
+        } else {
+            $user = User::where('username', $request->input('username'))->first();
+        }
 
         if (! $user || ! $user->password || ! Hash::check($request->input('password'), $user->password)) {
             return response()->json(['message' => 'Invalid credentials'], 401);

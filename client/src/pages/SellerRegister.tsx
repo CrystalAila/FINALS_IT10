@@ -11,6 +11,8 @@ const SellerRegister: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [permitFile, setPermitFile] = useState<File | null>(null);
+  const [permitIssueDate, setPermitIssueDate] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { register, loading } = useAuth();
@@ -25,25 +27,25 @@ const SellerRegister: React.FC = () => {
       return;
     }
 
-    try {
-      const user = await register({
-        fullname,
-        username: businessName.replace(/\s+/g, '').toLowerCase().slice(0, 20),
-        password,
-        email: email || undefined,
-        phone: phone || undefined,
-        business_name: businessName,
-        role: 'seller',
-        status: 'pending',
-      });
+    if (!permitFile) {
+      setError('Please upload your business permit');
+      return;
+    }
 
-      if (user.role === 'seller' || user.role === 'reseller') {
-        navigate('/seller/dashboard', {
-          state: { message: 'Your shop is under review. Please upload your LGU permit.' },
-        });
-      } else {
-        navigate('/');
-      }
+    try {
+      const formData = new FormData();
+      formData.append('fullname', fullname);
+      formData.append('business_name', businessName);
+      formData.append('password', password);
+      formData.append('email', email);
+      formData.append('phone', phone);
+      formData.append('role', 'seller');
+      formData.append('status', 'pending');
+      formData.append('permit', permitFile);
+      formData.append('permit_issue_date', permitIssueDate);
+
+      await register(formData);
+      navigate('/seller/verification');
     } catch (err: any) {
       setError(err?.response?.data?.message ?? err?.response?.data?.errors?.username?.[0] ?? 'Registration failed');
     }
@@ -56,7 +58,7 @@ const SellerRegister: React.FC = () => {
       footer={
         <p className="mt-6 text-center text-sm text-gray-500">
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-brand hover:underline">
+          <Link to="/seller-login" className="font-semibold text-brand hover:underline">
             Sign in
           </Link>
         </p>
@@ -157,6 +159,38 @@ const SellerRegister: React.FC = () => {
             className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
             required
             minLength={6}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="permit" className="mb-1.5 block text-sm font-semibold text-gray-700">
+            Business Permit (Image or PDF)
+          </label>
+          <input
+            id="permit"
+            type="file"
+            accept="image/*,application/pdf"
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                setPermitFile(e.target.files[0]);
+              }
+            }}
+            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 file:mr-4 file:rounded-full file:border-0 file:bg-brand/10 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-brand hover:file:bg-brand/20"
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="permitIssueDate" className="mb-1.5 block text-sm font-semibold text-gray-700">
+            Date Issued
+          </label>
+          <input
+            id="permitIssueDate"
+            type="date"
+            value={permitIssueDate}
+            onChange={(e) => setPermitIssueDate(e.target.value)}
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+            required
           />
         </div>
 

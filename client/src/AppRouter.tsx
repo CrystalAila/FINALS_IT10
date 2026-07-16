@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
+import SellerLogin from './pages/SellerLogin';
 import Register from './pages/Register';
 import SellerRegister from './pages/SellerRegister';
 import ForgotPassword from './pages/ForgotPassword';
@@ -30,6 +31,7 @@ const AppRouter: React.FC = () => {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/seller-login" element={<SellerLogin />} />
         <Route path="/register" element={<Register />} />
         <Route path="/seller-register" element={<SellerRegister />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

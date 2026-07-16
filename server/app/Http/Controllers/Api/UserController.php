@@ -13,10 +13,56 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::orderBy('created_at', 'desc')
-            ->get(['id', 'fullname', 'username', 'role', 'created_at', 'updated_at']);
+        $users = User::where('role', '!=', 'customer')
+            ->with('farm')
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-        return response()->json(['users' => $users]);
+        $riders = \App\Models\Rider::with('farm')->get()->map(function ($rider) {
+            return [
+                'id' => 1000000 + $rider->id,
+                'fullname' => $rider->fullname,
+                'username' => 'Rider Phone: ' . $rider->phone,
+                'role' => 'rider',
+                'created_at' => $rider->created_at ? $rider->created_at->toIso8601String() : null,
+                'updated_at' => $rider->updated_at ? $rider->updated_at->toIso8601String() : null,
+                'is_rider' => true,
+                'real_rider_id' => $rider->id,
+                'phone' => $rider->phone,
+                'farm' => $rider->farm ? [
+                    'name' => $rider->farm->name,
+                    'location' => $rider->farm->location,
+                    'description' => $rider->farm->description,
+                ] : null,
+            ];
+        });
+
+        $combined = $users->map(function ($u) {
+            return [
+                'id' => $u->id,
+                'fullname' => $u->fullname,
+                'username' => $u->username,
+                'role' => $u->role,
+                'created_at' => $u->created_at ? $u->created_at->toIso8601String() : null,
+                'updated_at' => $u->updated_at ? $u->updated_at->toIso8601String() : null,
+                'is_rider' => false,
+                'status' => $u->status,
+                'business_name' => $u->business_name,
+                'email' => $u->email,
+                'phone' => $u->phone,
+                'farm' => $u->farm ? [
+                    'name' => $u->farm->name,
+                    'location' => $u->farm->location,
+                    'description' => $u->farm->description,
+                    'permit_file' => $u->farm->permit_file,
+                    'permit_status' => $u->farm->permit_status,
+                    'permit_issue_date' => $u->farm->permit_issue_date,
+                    'permit_expiry_date' => $u->farm->permit_expiry_date,
+                ] : null,
+            ];
+        })->concat($riders);
+
+        return response()->json(['users' => $combined]);
     }
 
     public function show($id)
@@ -108,5 +154,150 @@ class UserController extends Controller
         ActivityLogService::log("Admin deleted user {$username}");
 
         return response()->json(['message' => 'User deleted']);
+    }
+
+    public function getPermits(Request $request)
+    {
+        $status = $request->query('status'); // 'all', 'pending', 'approved', 'rejected', 'suspended', 'under_review'
+
+        $query = User::whereIn('role', ['seller', 'reseller'])->with('farm');
+
+        if ($status && $status !== 'all') {
+            if ($status === 'pending') {
+                $query->where('status', 'pending');
+            } elseif ($status === 'under_review') {
+                $query->where('status', 'under_review');
+            } elseif ($status === 'approved') {
+                $query->where('status', 'verified');
+            } elseif ($status === 'suspended') {
+                $query->where('status', 'suspended');
+            } elseif ($status === 'rejected') {
+                $query->where('status', 'rejected');
+            }
+        }
+
+        $sellers = $query->orderBy('created_at', 'desc')->get();
+
+        $mapped = $sellers->map(function ($seller) {
+            $farm = $seller->farm;
+
+            // Auto-suspend expired permits on the fly if checked in UI
+            if ($farm && $farm->permit_expiry_date && \Illuminate\Support\Carbon::parse($farm->permit_expiry_date)->isPast() && $seller->status !== 'suspended') {
+                $seller->status = 'suspended';
+                $seller->save();
+                $farm->permit_status = 'suspended';
+                $farm->save();
+            }
+
+            $uiStatus = 'Pending';
+            if ($seller->status === 'under_review') {
+                $uiStatus = 'Under Review';
+            } elseif ($seller->status === 'verified') {
+                $uiStatus = 'Approved';
+            } elseif ($seller->status === 'suspended') {
+                $uiStatus = 'Suspended';
+            } elseif ($seller->status === 'rejected') {
+                $uiStatus = 'Rejected';
+            }
+
+            $documents = [];
+            if ($farm && $farm->permit_file) {
+                $documents[] = basename($farm->permit_file);
+            }
+
+            return [
+                'id' => $seller->id,
+                'seller_name' => $seller->business_name ?? ($farm ? $farm->name : $seller->fullname),
+                'status' => $uiStatus,
+                'documents' => $documents,
+                'submitted_at' => $seller->created_at ? $seller->created_at->diffForHumans() : 'unknown',
+                'notes' => $farm ? $farm->description : null,
+                'permit_url' => $farm && $farm->permit_file ? asset('storage/' . $farm->permit_file) : null,
+                'permit_issue_date' => $farm ? $farm->permit_issue_date : null,
+                'permit_expiry_date' => $farm ? $farm->permit_expiry_date : null,
+            ];
+        });
+
+        return response()->json($mapped);
+    }
+
+    public function approvePermit($id)
+    {
+        $user = User::findOrFail($id);
+        $user->status = 'verified';
+        $user->save();
+
+        $farm = $user->farm;
+        if ($farm) {
+            $farm->permit_status = 'approved';
+            $farm->save();
+        }
+
+        ActivityLogService::log("Admin verified seller {$user->username}");
+        return response()->json(['message' => 'Seller verified and permit approved']);
+    }
+
+    public function rejectPermit($id)
+    {
+        $user = User::findOrFail($id);
+        $user->status = 'rejected';
+        $user->save();
+
+        $farm = $user->farm;
+        if ($farm) {
+            $farm->permit_status = 'rejected';
+            $farm->save();
+        }
+
+        ActivityLogService::log("Admin rejected permit for seller {$user->username}");
+        return response()->json(['message' => 'Seller permit rejected']);
+    }
+
+    public function requestRevisionPermit($id)
+    {
+        $user = User::findOrFail($id);
+        $user->status = 'pending';
+        $user->save();
+
+        $farm = $user->farm;
+        if ($farm) {
+            $farm->permit_status = 'pending';
+            $farm->save();
+        }
+
+        ActivityLogService::log("Admin requested permit revision for seller {$user->username}");
+        return response()->json(['message' => 'Permit revision requested']);
+    }
+
+    public function suspendSeller($id)
+    {
+        $user = User::findOrFail($id);
+        $user->status = 'suspended';
+        $user->save();
+
+        $farm = $user->farm;
+        if ($farm) {
+            $farm->permit_status = 'rejected';
+            $farm->save();
+        }
+
+        ActivityLogService::log("Admin suspended seller {$user->username}");
+        return response()->json(['message' => 'Seller account suspended']);
+    }
+
+    public function underReviewPermit($id)
+    {
+        $user = User::findOrFail($id);
+        $user->status = 'under_review';
+        $user->save();
+
+        $farm = $user->farm;
+        if ($farm) {
+            $farm->permit_status = 'under_review';
+            $farm->save();
+        }
+
+        ActivityLogService::log("Admin set seller {$user->username} status to Under Review");
+        return response()->json(['message' => 'Seller permit is now under review']);
     }
 }

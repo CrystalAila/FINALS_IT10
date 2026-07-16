@@ -14,6 +14,17 @@ export const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
 
   if (!user) return <Navigate to="/login" replace />;
 
+  // Seller verification status guard
+  if ((user.role === 'seller' || user.role === 'reseller') && user.status !== 'verified') {
+    if (window.location.pathname !== '/seller/verification') {
+      return <Navigate to="/seller/verification" replace />;
+    }
+  } else if ((user.role === 'seller' || user.role === 'reseller') && user.status === 'verified') {
+    if (window.location.pathname === '/seller/verification') {
+      return <Navigate to="/seller/dashboard" replace />;
+    }
+  }
+
   const allowed = toArray(allowedRoles);
   if (allowed.length > 0 && !allowed.includes(user.role)) {
     // redirect to user's base dashboard

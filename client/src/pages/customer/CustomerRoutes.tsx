@@ -8,6 +8,7 @@ import OrderDetailPage from './OrderDetailPage';
 import OrdersPage from './OrdersPage';
 import ProductDetailPage from './ProductDetailPage';
 import ProfilePage from './ProfilePage';
+import ShopDetailsPage from './ShopDetailsPage';
 
 export default function CustomerRoutes() {
   return (
@@ -15,6 +16,7 @@ export default function CustomerRoutes() {
       <Route element={<CustomerLayout />}>
         <Route index element={<CustomerHomePage />} />
         <Route path="products/:id" element={<ProductDetailPage />} />
+        <Route path="shops/:id" element={<ShopDetailsPage />} />
         <Route path="cart" element={<CartPage />} />
         <Route path="checkout" element={<CheckoutPage />} />
         <Route path="orders" element={<OrdersPage />} />

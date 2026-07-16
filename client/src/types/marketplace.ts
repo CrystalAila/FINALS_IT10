@@ -7,6 +7,9 @@ export type Farm = {
   rating?: string | number;
   permit_status?: string;
   description?: string;
+  is_verified?: boolean;
+  is_permit_expired?: boolean;
+  permit_expiry_date?: string;
 };
 
 export type Product = {
@@ -21,6 +24,11 @@ export type Product = {
   price_large: string | number;
   price_jumbo: string | number;
   stock: number;
+  stock_small: number;
+  stock_medium: number;
+  stock_large: number;
+  stock_jumbo: number;
+  farm_origin?: string | null;
   rating: string | number;
   is_active: boolean;
   farm?: Farm;
@@ -86,7 +94,18 @@ export function displayRating(rating: string | number): string {
   return Number(rating).toFixed(1);
 }
 
-export type OrderStatus = 'pending' | 'processing' | 'ready' | 'completed' | 'cancelled';
+export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'ready' | 'completed' | 'cancelled';
+
+export type Rider = {
+  id: number;
+  farm_id: number;
+  fullname: string;
+  phone: string;
+  photo_path?: string | null;
+  photo_url?: string;
+  created_at?: string;
+  updated_at?: string;
+};
 
 export type OrderItem = {
   id: number;
@@ -112,11 +131,20 @@ export type Order = {
   postal_code?: string | null;
   phone?: string | null;
   rider_name?: string | null;
+  rider_id?: number | null;
+  rider?: Rider | null;
   notes?: string | null;
+  cancel_reason?: string | null;
   created_at: string;
   updated_at: string;
   farm?: Farm;
   items?: OrderItem[];
+  customer?: {
+    id: number;
+    fullname: string;
+    username: string;
+    phone?: string | null;
+  };
 };
 
 export type SavedAddress = {
@@ -134,6 +162,7 @@ export type SavedAddress = {
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pending: 'Pending',
+  confirmed: 'Confirmed',
   processing: 'Processing',
   ready: 'Ready',
   completed: 'Completed',
@@ -142,6 +171,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
+  confirmed: 'bg-orange-100 text-orange-800',
   processing: 'bg-blue-100 text-blue-800',
   ready: 'bg-purple-100 text-purple-800',
   completed: 'bg-green-100 text-green-800',

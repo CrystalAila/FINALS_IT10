@@ -11,7 +11,7 @@ class Order extends Model
     protected $fillable = [
         'customer_id', 'farm_id', 'status', 'delivery_type', 'payment_method',
         'total', 'address_line', 'city', 'province', 'postal_code',
-        'phone', 'rider_name', 'notes',
+        'phone', 'rider_name', 'rider_id', 'notes', 'cancel_reason',
     ];
 
     protected $casts = ['total' => 'decimal:2'];
@@ -29,5 +29,28 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * Get the rider assigned to the delivery.
+     */
+    public function rider(): BelongsTo
+    {
+        return $this->belongsTo(Rider::class);
+    }
+
+    /**
+     * Get the seller associated with the order (through their farm).
+     */
+    public function seller()
+    {
+        return $this->hasOneThrough(
+            User::class,
+            Farm::class,
+            'id',          // Foreign key on farms table
+            'id',          // Foreign key on users table
+            'farm_id',     // Foreign key on orders table
+            'user_id'      // Foreign key on farms table
+        );
     }
 }

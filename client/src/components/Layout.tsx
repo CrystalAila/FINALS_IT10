@@ -36,7 +36,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             >
               Dashboard
             </Link>
-            {user?.role === 'seller' && (
+            {(user?.role === 'seller' || user?.role === 'reseller') && (
               <>
                 <Link
                   to="/seller/shop"
@@ -61,6 +61,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/riders') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
                 >
                   Rider Registry
+                </Link>
+                <Link
+                  to="/seller/sales-report"
+                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/sales-report') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
+                >
+                  Sales Report
                 </Link>
               </>
             )}
@@ -135,7 +141,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <span className="text-slate-400">🔎</span>
             </div>
             <div className="flex items-center gap-3 text-slate-600">
-              <span className="hidden rounded-full bg-brand/10 px-3 py-1 text-sm font-semibold text-brand sm:inline-flex">{user?.role === 'seller' ? 'Seller' : user?.role}</span>
+              <span className="hidden rounded-full bg-brand/10 px-3 py-1 text-sm font-semibold text-brand sm:inline-flex">
+                {(user?.role === 'seller' || user?.role === 'reseller') ? (user?.role === 'seller' ? 'Seller' : 'Reseller') : user?.role}
+              </span>
               <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-brand/10 text-brand text-lg">🐓</div>
             </div>
           </header>

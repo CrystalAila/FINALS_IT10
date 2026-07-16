@@ -1,32 +1,40 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import Layout from '../../components/Layout';
-
-type Rider = {
-  id: number;
-  fullname: string;
-  phone: string;
-  photoUrl: string;
-};
-
-const initialRiders: Rider[] = [
-  { id: 1, fullname: 'Jun Mendoza', phone: '+63 917 123 4567', photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80' },
-  { id: 2, fullname: 'Anna Rivera', phone: '+63 926 987 1234', photoUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80' },
-];
+import api from '../../lib/axios';
+import type { Rider } from '../../types/marketplace';
+import { Trash } from 'lucide-react';
 
 const RiderRegistry: React.FC = () => {
-  const [riders, setRiders] = useState<Rider[]>(initialRiders);
+  const [riders, setRiders] = useState<Rider[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [fullname, setFullname] = useState('');
   const [phone, setPhone] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchRiders();
+  }, []);
+
+  const fetchRiders = async () => {
+    try {
+      const res = await api.get('/seller/riders');
+      setRiders(res.data.riders);
+    } catch (err: any) {
+      setError('Failed to fetch riders from registry.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const photoPreview = useMemo(
     () => (photoFile ? URL.createObjectURL(photoFile) : ''),
     [photoFile]
   );
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
 
@@ -35,18 +43,41 @@ const RiderRegistry: React.FC = () => {
       return;
     }
 
-    const newRider: Rider = {
-      id: riders.length ? Math.max(...riders.map((r) => r.id)) + 1 : 1,
-      fullname: fullname.trim(),
-      phone: phone.trim(),
-      photoUrl: photoPreview || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
-    };
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append('fullname', fullname.trim());
+      formData.append('phone', phone.trim());
+      if (photoFile) {
+        formData.append('photo', photoFile);
+      }
 
-    setRiders((current) => [newRider, ...current]);
-    setShowForm(false);
-    setFullname('');
-    setPhone('');
-    setPhotoFile(null);
+      const res = await api.post('/seller/riders', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setRiders((current) => [res.data.rider, ...current]);
+      setShowForm(false);
+      setFullname('');
+      setPhone('');
+      setPhotoFile(null);
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Failed to save rider.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Are you sure you want to remove this rider?')) return;
+    try {
+      await api.delete(`/seller/riders/${id}`);
+      setRiders((current) => current.filter((r) => r.id !== id));
+    } catch (err) {
+      alert('Failed to delete rider.');
+    }
   };
 
   return (
@@ -122,34 +153,50 @@ const RiderRegistry: React.FC = () => {
             <div className="md:col-span-2 flex justify-end">
               <button
                 type="submit"
-                className="inline-flex items-center justify-center rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-brand/20 transition hover:bg-brand-dark"
+                disabled={saving}
+                className="inline-flex items-center justify-center rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-brand/20 transition hover:bg-brand-dark disabled:opacity-65"
               >
-                Save rider
+                {saving ? 'Saving...' : 'Save rider'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {riders.map((rider) => (
-          <div key={rider.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
-            <div className="h-44 overflow-hidden bg-slate-100">
-              <img src={rider.photoUrl} alt={rider.fullname} className="h-full w-full object-cover" />
-            </div>
-            <div className="space-y-3 p-6">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Rider</p>
-                <h2 className="mt-2 text-xl font-semibold text-slate-900">{rider.fullname}</h2>
+      {loading ? (
+        <p className="text-center text-slate-500 py-12">Loading riders...</p>
+      ) : riders.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-slate-300 p-12 text-center">
+          <p className="text-slate-500">No riders registered yet.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {riders.map((rider) => (
+            <div key={rider.id} className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
+              <button
+                onClick={() => handleDelete(rider.id)}
+                className="absolute right-4 top-4 rounded-full bg-white/80 p-2 text-red-600 shadow-sm transition hover:bg-red-50"
+                title="Remove Rider"
+              >
+                <Trash className="h-4 w-4" />
+              </button>
+              <div className="h-44 overflow-hidden bg-slate-100">
+                <img src={rider.photo_url} alt={rider.fullname} className="h-full w-full object-cover" />
               </div>
-              <div className="rounded-3xl bg-slate-50 p-4 text-sm text-slate-700">
-                <p className="text-slate-500">Phone</p>
-                <p className="mt-1 font-medium">{rider.phone}</p>
+              <div className="space-y-3 p-6">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Rider</p>
+                  <h2 className="mt-2 text-xl font-semibold text-slate-900">{rider.fullname}</h2>
+                </div>
+                <div className="rounded-3xl bg-slate-50 p-4 text-sm text-slate-700">
+                  <p className="text-slate-500">Phone</p>
+                  <p className="mt-1 font-medium">{rider.phone}</p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </Layout>
   );
 };

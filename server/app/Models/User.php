@@ -46,4 +46,20 @@ class User extends Authenticatable
     {
         return $this->hasMany(Address::class);
     }
+
+    /**
+     * Get the farm associated with the user (seller).
+     */
+    public function farm()
+    {
+        return $this->hasOne(Farm::class);
+    }
+
+    /**
+     * Get the favorited farms for the user (customer).
+     */
+    public function favoriteFarms()
+    {
+        return $this->belongsToMany(Farm::class, 'favorite_farms');
+    }
 }

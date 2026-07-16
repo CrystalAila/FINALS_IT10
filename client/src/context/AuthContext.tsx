@@ -10,24 +10,24 @@ export type User = {
   phone?: string | null;
   google_id?: string | null;
   role: 'customer' | 'reseller' | 'seller' | 'admin';
-  status?: 'pending' | 'active' | 'suspended';
+  status?: 'pending' | 'under_review' | 'verified' | 'suspended' | 'rejected' | 'active';
 };
 
 type AuthContextType = {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<User>;
+  login: (username: string, password: string, business_name?: string) => Promise<User>;
   register: (payload: {
     fullname: string;
-    username: string;
+    username?: string;
     business_name?: string;
     password: string;
     email?: string;
     phone?: string;
     role?: string;
     status?: string;
-  }) => Promise<User>;
+  } | FormData) => Promise<User>;
   googleLogin: (user: User, token: string) => void;
   updateProfile: (payload: {
     fullname?: string;
@@ -99,10 +99,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(t);
   };
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string, business_name?: string) => {
     setLoading(true);
     try {
-      const res = await api.post('/login', { username, password });
+      const payload: any = { password };
+      if (business_name) {
+        payload.business_name = business_name;
+      } else {
+        payload.username = username;
+      }
+      const res = await api.post('/login', payload);
       const { user: u, token: t } = res.data;
       persistSession(u, t);
       try {
@@ -116,19 +122,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (payload: {
-    fullname: string;
-    username: string;
-    business_name?: string;
-    password: string;
-    email?: string;
-    phone?: string;
-    role?: string;
-    status?: string;
-  }) => {
+  const register = async (payload: any) => {
     setLoading(true);
     try {
-      const res = await api.post('/register', payload);
+      const headers = payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined;
+      const res = await api.post('/register', payload, { headers });
       const { user: u, token: t } = res.data;
       persistSession(u, t);
       try {
