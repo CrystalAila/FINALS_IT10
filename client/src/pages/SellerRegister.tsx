@@ -47,7 +47,13 @@ const SellerRegister: React.FC = () => {
       await register(formData);
       navigate('/seller/verification');
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.response?.data?.errors?.username?.[0] ?? 'Registration failed');
+      const errorData = err?.response?.data;
+      if (errorData?.errors) {
+        const messages = Object.values(errorData.errors).flat().join(', ');
+        setError(messages);
+      } else {
+        setError(errorData?.message ?? 'Registration failed');
+      }
     }
   };
 

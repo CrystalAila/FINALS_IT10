@@ -152,25 +152,11 @@ export default function ProfilePage() {
 
       <div className="flex flex-wrap gap-3">
         <Link
-          to="/customer/orders"
-          className="rounded-full border-2 border-brand px-6 py-2.5 text-sm font-semibold text-brand hover:bg-brand/5"
-        >
-          My Orders
-        </Link>
-        <Link
           to="/customer/addresses"
           className="rounded-full border-2 border-brand px-6 py-2.5 text-sm font-semibold text-brand hover:bg-brand/5"
         >
           Address Book
         </Link>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-6 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50"
-        >
-          <LogOut className="h-4 w-4" />
-          Logout
-        </button>
       </div>
     </div>
   );

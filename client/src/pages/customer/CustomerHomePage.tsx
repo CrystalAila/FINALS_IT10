@@ -81,7 +81,7 @@ export default function CustomerHomePage() {
       </section>
 
       {/* Filter panel */}
-      <section className="bg-white rounded-3xl border border-slate-200 p-6 shadow-card space-y-4">
+      <section className="sticky top-[64px] z-20 bg-white rounded-3xl border border-slate-200 p-6 shadow-card space-y-4">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search bar */}
           <div className="flex-1 flex gap-2 items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">

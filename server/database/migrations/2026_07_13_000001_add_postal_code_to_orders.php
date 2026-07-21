@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->string('postal_code')->nullable()->after('province');
-        });
+        if (!Schema::hasColumn('orders', 'postal_code')) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->string('postal_code')->nullable()->after('province');
+            });
+        }
     }
 
     /**
@@ -21,8 +23,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->dropColumn('postal_code');
-        });
+        if (Schema::hasColumn('orders', 'postal_code')) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->dropColumn('postal_code');
+            });
+        }
     }
 };

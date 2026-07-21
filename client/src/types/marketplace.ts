@@ -10,6 +10,7 @@ export type Farm = {
   is_verified?: boolean;
   is_permit_expired?: boolean;
   permit_expiry_date?: string;
+  logo?: string | null;
 };
 
 export type Product = {

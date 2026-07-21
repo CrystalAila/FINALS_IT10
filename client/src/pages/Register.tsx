@@ -26,7 +26,13 @@ const Register: React.FC = () => {
       else if (user.role === 'seller' || user.role === 'reseller') navigate('/seller/dashboard');
       else navigate('/customer');
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.response?.data?.errors?.username?.[0] ?? 'Registration failed');
+      const errorData = err?.response?.data;
+      if (errorData?.errors) {
+        const messages = Object.values(errorData.errors).flat().join(', ');
+        setError(messages);
+      } else {
+        setError(errorData?.message ?? 'Registration failed');
+      }
     }
   };
 

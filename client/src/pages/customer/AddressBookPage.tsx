@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { MapPin, Pencil, Plus, Star, Trash2 } from 'lucide-react';
 import api from '../../lib/axios';
 import Modal from '../../components/customer/Modal';
+import { useAuth } from '../../context/AuthContext';
 import type { SavedAddress } from '../../types/marketplace';
 
 const emptyForm = {
@@ -15,6 +16,7 @@ const emptyForm = {
 };
 
 export default function AddressBookPage() {
+  const { user } = useAuth();
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +40,11 @@ export default function AddressBookPage() {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ ...emptyForm, is_default: addresses.length === 0 });
+    setForm({
+      ...emptyForm,
+      full_name: user?.fullname || '',
+      is_default: addresses.length === 0,
+    });
     setModalOpen(true);
   };
 
@@ -190,15 +196,6 @@ export default function AddressBookPage() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Full Name</label>
-            <input
-              required
-              value={form.full_name}
-              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-            />
-          </div>
-          <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Phone</label>
             <input
               required
@@ -209,13 +206,32 @@ export default function AddressBookPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Region</label>
-            <input
+            <label className="mb-1 block text-sm font-medium text-gray-700">Municipality</label>
+            <select
               required
               value={form.region}
               onChange={(e) => setForm({ ...form, region: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-            />
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 text-sm"
+            >
+              <option value="">Select Municipality (Capiz only)</option>
+              <option value="Roxas City">Roxas City</option>
+              <option value="Cuartero">Cuartero</option>
+              <option value="Dao">Dao</option>
+              <option value="Dumalag">Dumalag</option>
+              <option value="Dumarao">Dumarao</option>
+              <option value="Ivisan">Ivisan</option>
+              <option value="Jamindan">Jamindan</option>
+              <option value="Maayon">Maayon</option>
+              <option value="Mambusao">Mambusao</option>
+              <option value="Panay">Panay</option>
+              <option value="Panitan">Panitan</option>
+              <option value="Pilar">Pilar</option>
+              <option value="Pontevedra">Pontevedra</option>
+              <option value="President Roxas">President Roxas</option>
+              <option value="Sapi-an">Sapi-an</option>
+              <option value="Sigma">Sigma</option>
+              <option value="Tapaz">Tapaz</option>
+            </select>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Postal Code</label>

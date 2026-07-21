@@ -17,8 +17,10 @@ return new class extends Migration
         });
 
         // Expand enums
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE farms MODIFY COLUMN permit_status ENUM('pending', 'under_review', 'approved', 'rejected', 'suspended') DEFAULT 'pending'");
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE users MODIFY COLUMN status ENUM('pending', 'under_review', 'verified', 'suspended', 'rejected', 'active') DEFAULT 'active'");
+        if (\Illuminate\Support\Facades\DB::connection()->getDriverName() === 'mysql') {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE farms MODIFY COLUMN permit_status ENUM('pending', 'under_review', 'approved', 'rejected', 'suspended') DEFAULT 'pending'");
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE users MODIFY COLUMN status ENUM('pending', 'under_review', 'verified', 'suspended', 'rejected', 'active') DEFAULT 'active'");
+        }
     }
 
     /**
@@ -31,7 +33,9 @@ return new class extends Migration
         });
 
         // Revert enums
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE farms MODIFY COLUMN permit_status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending'");
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE users MODIFY COLUMN status ENUM('pending', 'verified', 'suspended', 'rejected', 'active') DEFAULT 'active'");
+        if (\Illuminate\Support\Facades\DB::connection()->getDriverName() === 'mysql') {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE farms MODIFY COLUMN permit_status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending'");
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE users MODIFY COLUMN status ENUM('pending', 'verified', 'suspended', 'rejected', 'active') DEFAULT 'active'");
+        }
     }
 };

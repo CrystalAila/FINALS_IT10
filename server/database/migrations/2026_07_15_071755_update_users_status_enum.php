@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         // Alter status column to support verified and rejected
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE users MODIFY COLUMN status ENUM('pending', 'verified', 'suspended', 'rejected', 'active') DEFAULT 'active'");
+        if (\Illuminate\Support\Facades\DB::connection()->getDriverName() === 'mysql') {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE users MODIFY COLUMN status ENUM('pending', 'verified', 'suspended', 'rejected', 'active') DEFAULT 'active'");
+        }
     }
 
     /**
@@ -21,6 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         // Revert to original enum
-        \Illuminate\Support\Facades\DB::statement("ALTER TABLE users MODIFY COLUMN status ENUM('pending', 'active', 'suspended') DEFAULT 'active'");
+        if (\Illuminate\Support\Facades\DB::connection()->getDriverName() === 'mysql') {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE users MODIFY COLUMN status ENUM('pending', 'active', 'suspended') DEFAULT 'active'");
+        }
     }
 };
