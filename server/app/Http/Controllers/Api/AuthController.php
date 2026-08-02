@@ -50,6 +50,7 @@ class AuthController extends Controller
         if ($request->input('role') === 'seller') {
             $rules['permit'] = ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'];
             $rules['permit_issue_date'] = ['required', 'date'];
+            $rules['permit_expiry_date'] = ['required', 'date', 'after_or_equal:permit_issue_date'];
         }
 
         $validator = Validator::make($request->all(), $rules);
@@ -78,11 +79,11 @@ class AuthController extends Controller
             }
 
             $issueDate = $request->input('permit_issue_date') ? Carbon::parse($request->input('permit_issue_date')) : null;
-            $expiryDate = $issueDate ? $issueDate->copy()->addYear()->toDateString() : null;
+            $expiryDate = $request->input('permit_expiry_date') ? Carbon::parse($request->input('permit_expiry_date')) : null;
 
             $farmStatus = $user->status === 'verified' ? 'approved' : 'pending';
 
-            if ($expiryDate && Carbon::parse($expiryDate)->isPast()) {
+            if ($expiryDate && $expiryDate->isPast()) {
                 $farmStatus = 'suspended';
                 $user->status = 'suspended';
                 $user->save();
@@ -94,7 +95,7 @@ class AuthController extends Controller
                 'permit_status' => $farmStatus,
                 'permit_file' => $permitPath,
                 'permit_issue_date' => $issueDate ? $issueDate->toDateString() : null,
-                'permit_expiry_date' => $expiryDate,
+                'permit_expiry_date' => $expiryDate ? $expiryDate->toDateString() : null,
                 'location' => 'Roxas City, Capiz', // Default placeholder location
                 'description' => 'Newly registered local poultry farm.',
                 'rating' => 5.0,
@@ -104,6 +105,10 @@ class AuthController extends Controller
         $token = $user->createToken('api-token')->plainTextToken;
 
         ActivityLogService::log('User registered', $user->id);
+
+        if (in_array($user->role, ['seller', 'reseller'])) {
+            $user->load('farm');
+        }
 
         return response()->json(['user' => $user, 'token' => $token]);
     }
@@ -140,6 +145,10 @@ class AuthController extends Controller
         $token = $user->createToken('api-token')->plainTextToken;
 
         ActivityLogService::log('User logged in', $user->id);
+
+        if (in_array($user->role, ['seller', 'reseller'])) {
+            $user->load('farm');
+        }
 
         return response()->json(['user' => $user, 'token' => $token]);
     }
@@ -223,6 +232,10 @@ class AuthController extends Controller
         $token = $user->createToken('api-token')->plainTextToken;
 
         ActivityLogService::log('User logged in via Google', $user->id);
+
+        if (in_array($user->role, ['seller', 'reseller'])) {
+            $user->load('farm');
+        }
 
         return response()->json(['user' => $user, 'token' => $token]);
     }
@@ -319,7 +332,11 @@ class AuthController extends Controller
 
     public function profile(Request $request)
     {
-        return response()->json(['user' => $request->user()]);
+        $user = $request->user();
+        if (in_array($user->role, ['seller', 'reseller'])) {
+            $user->load('farm');
+        }
+        return response()->json(['user' => $user]);
     }
 
     public function updateProfile(Request $request)
@@ -352,6 +369,11 @@ class AuthController extends Controller
 
         ActivityLogService::log('Profile updated', $user->id);
 
-        return response()->json(['user' => $user->fresh()]);
+        $freshUser = $user->fresh();
+        if (in_array($freshUser->role, ['seller', 'reseller'])) {
+            $freshUser->load('farm');
+        }
+
+        return response()->json(['user' => $freshUser]);
     }
 }

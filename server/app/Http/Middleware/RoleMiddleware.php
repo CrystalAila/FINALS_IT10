@@ -21,7 +21,10 @@ class RoleMiddleware
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        if (in_array($user->role, ['seller', 'reseller']) && $user->status !== 'verified') {
+        // Allow unverified sellers to access farm/shop configuration to upload/update business permit details
+        $isFarmConfigRoute = $request->is('api/seller/farm');
+
+        if (in_array($user->role, ['seller', 'reseller']) && $user->status !== 'verified' && !$isFarmConfigRoute) {
             return response()->json(['message' => 'Your seller account is not verified yet.'], 403);
         }
 

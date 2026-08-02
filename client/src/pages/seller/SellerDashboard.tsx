@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
+import { useAuth } from '../../context/AuthContext';
 
 const metricCards = [
   { title: 'Total Sales', value: '₱68,430', description: 'Monthly revenue across all listings' },
@@ -9,15 +10,78 @@ const metricCards = [
 ];
 
 const SellerDashboard: React.FC = () => {
+  const { user } = useAuth();
   const location = useLocation();
   const [cards] = useState(metricCards);
   const message = (location.state as { message?: string } | null)?.message;
+
+  // Check if permit is expiring soon
+  const getDaysUntilExpiry = () => {
+    if (!user || !user.farm || !user.farm.permit_expiry_date) return null;
+    const expiryDate = new Date(user.farm.permit_expiry_date);
+    const today = new Date();
+    expiryDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const timeDiff = expiryDate.getTime() - today.getTime();
+    return Math.ceil(timeDiff / (1000 * 3600 * 24));
+  };
+
+  const daysRemaining = getDaysUntilExpiry();
+  const isExpiringSoon = daysRemaining !== null && daysRemaining > 0 && daysRemaining <= 30;
 
   return (
     <Layout>
       {message && (
         <div className="mb-6 rounded-3xl border border-brand/20 bg-brand/10 p-5 text-sm text-brand">
           {message}
+        </div>
+      )}
+
+      {user && user.status === 'verified' && isExpiringSoon && (
+        <div className="mb-6 rounded-3xl border border-orange-200 bg-orange-50 p-5 text-orange-800 shadow-sm flex items-start gap-4">
+          <div className="text-2xl mt-0.5">🔔</div>
+          <div>
+            <h3 className="font-semibold text-lg">Business Permit Expiring Soon</h3>
+            <p className="mt-1 text-sm text-orange-700">
+              Your LGU Business Permit is expiring in <strong>{daysRemaining} {daysRemaining === 1 ? 'day' : 'days'}</strong> (on {new Date(user.farm.permit_expiry_date).toLocaleDateString()}).
+              Please renew your permit and upload it in the shop settings to ensure continuous operation of your shop.
+            </p>
+            <div className="mt-3">
+              <Link
+                to="/seller/shop"
+                className="inline-flex rounded-xl bg-orange-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-orange-700 transition"
+              >
+                Renew Permit & Configure Shop
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {user && user.status !== 'verified' && (
+        <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-800 shadow-sm flex items-start gap-4">
+          <div className="text-2xl mt-0.5">⚠️</div>
+          <div>
+            <h3 className="font-semibold text-lg">Shop Verification Required</h3>
+            <p className="mt-1 text-sm text-amber-700">
+              Your seller account status is currently <strong className="capitalize">{user.status?.replace('_', ' ') || 'Pending'}</strong>.
+              Access to listings, orders, and rider management is disabled until your shop is approved by an administrator.
+            </p>
+            <div className="mt-3 flex gap-3">
+              <Link
+                to="/seller/verification"
+                className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-700 transition"
+              >
+                View Verification Status
+              </Link>
+              <Link
+                to="/seller/shop"
+                className="rounded-xl border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-50 transition"
+              >
+                Configure Shop & Permit
+              </Link>
+            </div>
+          </div>
         </div>
       )}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

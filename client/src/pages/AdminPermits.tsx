@@ -303,9 +303,17 @@ const AdminPermits: React.FC = () => {
                           {permit.permit_expiry_date && (
                             <p className="flex items-center gap-1.5">
                               <strong>Expiry Date:</strong> {new Date(permit.permit_expiry_date).toLocaleDateString()}
-                              {new Date(permit.permit_expiry_date) < new Date() && (
+                              {new Date(permit.permit_expiry_date) < new Date() ? (
                                 <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] text-red-700 font-bold animate-pulse">EXPIRED</span>
-                              )}
+                              ) : (() => {
+                                const days = Math.ceil((new Date(permit.permit_expiry_date).getTime() - new Date().setHours(0,0,0,0)) / (1000 * 3600 * 24));
+                                if (days > 0 && days <= 30) {
+                                  return (
+                                    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] text-orange-700 font-bold animate-pulse">EXPIRING SOON ({days}d left)</span>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </p>
                           )}
                         </div>
@@ -424,8 +432,18 @@ const AdminPermits: React.FC = () => {
                     {selectedPermit.permit_expiry_date && (
                       <> | <strong>Expires:</strong> {new Date(selectedPermit.permit_expiry_date).toLocaleDateString()}</>
                     )}
-                    {selectedPermit.permit_expiry_date && new Date(selectedPermit.permit_expiry_date) < new Date() && (
-                      <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[10px] text-red-700 font-bold animate-pulse inline-block">EXPIRED</span>
+                    {selectedPermit.permit_expiry_date && (
+                      new Date(selectedPermit.permit_expiry_date) < new Date() ? (
+                        <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[10px] text-red-700 font-bold animate-pulse inline-block">EXPIRED</span>
+                      ) : (() => {
+                        const days = Math.ceil((new Date(selectedPermit.permit_expiry_date).getTime() - new Date().setHours(0,0,0,0)) / (1000 * 3600 * 24));
+                        if (days > 0 && days <= 30) {
+                          return (
+                            <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] text-orange-700 font-bold animate-pulse inline-block">EXPIRING SOON ({days}d left)</span>
+                          );
+                        }
+                        return null;
+                      })()
                     )}
                   </span>
                 )}

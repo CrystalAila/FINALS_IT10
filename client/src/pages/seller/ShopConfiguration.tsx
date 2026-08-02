@@ -10,6 +10,20 @@ const ShopConfiguration: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Check if permit is expiring soon
+  const getDaysUntilExpiry = () => {
+    if (!user || !user.farm || !user.farm.permit_expiry_date) return null;
+    const expiryDate = new Date(user.farm.permit_expiry_date);
+    const today = new Date();
+    expiryDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const timeDiff = expiryDate.getTime() - today.getTime();
+    return Math.ceil(timeDiff / (1000 * 3600 * 24));
+  };
+
+  const daysRemaining = getDaysUntilExpiry();
+  const isExpiringSoon = daysRemaining !== null && daysRemaining > 0 && daysRemaining <= 30;
+
   const [form, setForm] = useState({
     businessName: '',
     address: '',
@@ -17,6 +31,7 @@ const ShopConfiguration: React.FC = () => {
     phone: '',
     permit: null as File | null,
     permitIssueDate: '',
+    permitExpiryDate: '',
   });
 
   useEffect(() => {
@@ -31,6 +46,7 @@ const ShopConfiguration: React.FC = () => {
           phone: user?.phone || '',
           permit: null,
           permitIssueDate: farm.permit_issue_date || '',
+          permitExpiryDate: farm.permit_expiry_date || '',
         });
       } catch (err) {
         console.error('Failed to load farm details:', err);
@@ -57,6 +73,7 @@ const ShopConfiguration: React.FC = () => {
       formData.append('location', form.address);
       formData.append('description', 'Farm shop configuration details.');
       formData.append('permit_issue_date', form.permitIssueDate);
+      formData.append('permit_expiry_date', form.permitExpiryDate);
       if (form.permit) {
         formData.append('permit', form.permit);
       }
@@ -96,6 +113,19 @@ const ShopConfiguration: React.FC = () => {
         <h1 className="mt-2 text-3xl font-semibold text-slate-900">Business information</h1>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">Keep your shop details current and upload your LGU permit for verification.</p>
       </div>
+
+      {user && user.status === 'verified' && isExpiringSoon && (
+        <div className="mb-6 rounded-3xl border border-orange-200 bg-orange-50 p-5 text-orange-800 shadow-sm flex items-start gap-4">
+          <div className="text-2xl mt-0.5">🔔</div>
+          <div>
+            <h3 className="font-semibold text-lg">Business Permit Near Expiration</h3>
+            <p className="mt-1 text-sm text-orange-700">
+              Your LGU Business Permit is expiring in <strong>{daysRemaining} {daysRemaining === 1 ? 'day' : 'days'}</strong> (on {new Date(user.farm.permit_expiry_date).toLocaleDateString()}).
+              Please renew your permit and upload the updated document and date issued below.
+            </p>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={submit} className="space-y-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-card">
         {error && (
@@ -141,6 +171,16 @@ const ShopConfiguration: React.FC = () => {
               type="date"
               value={form.permitIssueDate}
               onChange={(e) => handleChange('permitIssueDate', e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              required
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-700">Date of Expiration (LGU Permit)</label>
+            <input
+              type="date"
+              value={form.permitExpiryDate}
+              onChange={(e) => handleChange('permitExpiryDate', e.target.value)}
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
               required
             />

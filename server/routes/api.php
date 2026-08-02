@@ -73,6 +73,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/admin/users/{id}', [UserController::class, 'update']);
         Route::delete('/admin/users/{id}', [UserController::class, 'destroy']);
         Route::get('/admin/logs', [LogController::class, 'index']);
+        Route::get('/admin/reports/summary', [UserController::class, 'getReportsSummary']);
 
         // Permit Verification Routes
         Route::get('/admin/permits', [UserController::class, 'getPermits']);

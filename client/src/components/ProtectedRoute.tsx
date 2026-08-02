@@ -16,8 +16,10 @@ export const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
 
   // Seller verification status guard
   if ((user.role === 'seller' || user.role === 'reseller') && user.status !== 'verified') {
-    if (window.location.pathname !== '/seller/verification') {
-      return <Navigate to="/seller/verification" replace />;
+    const allowedPaths = ['/seller/dashboard', '/seller/verification', '/seller/shop'];
+    const currentPath = window.location.pathname;
+    if (!allowedPaths.some(path => currentPath === path || currentPath.startsWith(path + '/'))) {
+      return <Navigate to="/seller/dashboard" replace />;
     }
   } else if ((user.role === 'seller' || user.role === 'reseller') && user.status === 'verified') {
     if (window.location.pathname === '/seller/verification') {

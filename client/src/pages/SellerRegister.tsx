@@ -13,6 +13,7 @@ const SellerRegister: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [permitFile, setPermitFile] = useState<File | null>(null);
   const [permitIssueDate, setPermitIssueDate] = useState('');
+  const [permitExpiryDate, setPermitExpiryDate] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { register, loading } = useAuth();
@@ -43,6 +44,7 @@ const SellerRegister: React.FC = () => {
       formData.append('status', 'pending');
       formData.append('permit', permitFile);
       formData.append('permit_issue_date', permitIssueDate);
+      formData.append('permit_expiry_date', permitExpiryDate);
 
       await register(formData);
       navigate('/seller/verification');
@@ -195,6 +197,20 @@ const SellerRegister: React.FC = () => {
             type="date"
             value={permitIssueDate}
             onChange={(e) => setPermitIssueDate(e.target.value)}
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="permitExpiryDate" className="mb-1.5 block text-sm font-semibold text-gray-700">
+            Date of Expiration
+          </label>
+          <input
+            id="permitExpiryDate"
+            type="date"
+            value={permitExpiryDate}
+            onChange={(e) => setPermitExpiryDate(e.target.value)}
             className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
             required
           />

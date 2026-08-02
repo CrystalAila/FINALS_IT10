@@ -11,6 +11,7 @@ export type User = {
   google_id?: string | null;
   role: 'customer' | 'reseller' | 'seller' | 'admin';
   status?: 'pending' | 'under_review' | 'verified' | 'suspended' | 'rejected' | 'active';
+  farm?: any;
 };
 
 type AuthContextType = {
@@ -90,6 +91,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     bootstrap();
   }, [user]);
+
+  useEffect(() => {
+    if (!user || !token || (user.role !== 'seller' && user.role !== 'reseller')) return;
+
+    const checkStatus = async () => {
+      try {
+        const res = await api.get('/user');
+        const latestUser = res.data.user;
+        if (latestUser && latestUser.status !== user.status) {
+          const normalized = { ...latestUser, role: normalizeRole(latestUser.role) };
+          setUser(normalized);
+        }
+      } catch (err) {
+        console.error('Failed to sync user status:', err);
+      }
+    };
+
+    const interval = setInterval(checkStatus, 5000);
+    return () => clearInterval(interval);
+  }, [user, token]);
 
   const persistSession = (u: User, t: string) => {
     const normalizedUser = { ...u, role: normalizeRole(u.role) };

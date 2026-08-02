@@ -256,9 +256,17 @@ const AdminUsers = () => {
                           <p className="text-slate-400 font-medium">Permit Expiry</p>
                           <p className="font-semibold text-slate-800 flex items-center gap-1.5">
                             {new Date(selectedUser.farm.permit_expiry_date).toLocaleDateString()}
-                            {new Date(selectedUser.farm.permit_expiry_date) < new Date() && (
+                            {new Date(selectedUser.farm.permit_expiry_date) < new Date() ? (
                               <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] text-red-700 font-bold animate-pulse">EXPIRED</span>
-                            )}
+                            ) : (() => {
+                              const days = Math.ceil((new Date(selectedUser.farm.permit_expiry_date).getTime() - new Date().setHours(0,0,0,0)) / (1000 * 3600 * 24));
+                              if (days > 0 && days <= 30) {
+                                return (
+                                  <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] text-orange-700 font-bold animate-pulse">EXPIRING SOON ({days}d left)</span>
+                                );
+                              }
+                              return null;
+                            })()}
                           </p>
                         </div>
                       )}

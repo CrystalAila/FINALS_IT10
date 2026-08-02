@@ -300,4 +300,68 @@ class UserController extends Controller
         ActivityLogService::log("Admin set seller {$user->username} status to Under Review");
         return response()->json(['message' => 'Seller permit is now under review']);
     }
+
+    public function getReportsSummary(Request $request)
+    {
+        $totalSellers = User::whereIn('role', ['seller', 'reseller'])->count();
+        $verifiedSellers = User::whereIn('role', ['seller', 'reseller'])->where('status', 'verified')->count();
+        $pendingPermits = User::whereIn('role', ['seller', 'reseller'])->whereIn('status', ['pending', 'under_review'])->count();
+
+        $totalOrders = \App\Models\Order::count();
+        $completedOrders = \App\Models\Order::where('status', 'completed')->count();
+        $totalRevenue = \App\Models\Order::where('status', 'completed')->sum('total');
+
+        // Let's also get counts for order statuses
+        $orderStats = [
+            'pending' => \App\Models\Order::where('status', 'pending')->count(),
+            'confirmed' => \App\Models\Order::where('status', 'confirmed')->count(),
+            'processing' => \App\Models\Order::where('status', 'processing')->count(),
+            'ready' => \App\Models\Order::where('status', 'ready')->count(),
+            'completed' => $completedOrders,
+            'cancelled' => \App\Models\Order::where('status', 'cancelled')->count(),
+        ];
+
+        // Let's get daily sales for the last 15 days
+        $dailySales = \App\Models\Order::where('status', 'completed')
+            ->where('created_at', '>=', now()->subDays(14)->startOfDay())
+            ->selectRaw('DATE(created_at) as date, SUM(total) as total')
+            ->groupBy('date')
+            ->get()
+            ->pluck('total', 'date');
+
+        $chartData = [];
+        for ($i = 14; $i >= 0; $i--) {
+            $dateStr = now()->subDays($i)->format('Y-m-d');
+            $chartData[] = [
+                'label' => now()->subDays($i)->format('M d'),
+                'revenue' => (float) ($dailySales[$dateStr] ?? 0),
+            ];
+        }
+
+        // Recent transactions
+        $recentTransactions = \App\Models\Order::with('customer')
+            ->orderBy('id', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function ($order) {
+                return [
+                    'id' => $order->id,
+                    'customer_name' => $order->customer->fullname ?? 'Unknown Customer',
+                    'total' => (float) $order->total,
+                    'status' => $order->status,
+                    'date' => $order->created_at ? $order->created_at->format('M d, Y') : 'Unknown',
+                ];
+            });
+
+        return response()->json([
+            'total_sellers' => $totalSellers,
+            'verified_sellers' => $verifiedSellers,
+            'pending_permits' => $pendingPermits,
+            'total_orders' => $totalOrders,
+            'total_revenue' => (float) $totalRevenue,
+            'order_stats' => $orderStats,
+            'chart_data' => $chartData,
+            'recent_transactions' => $recentTransactions,
+        ]);
+    }
 }

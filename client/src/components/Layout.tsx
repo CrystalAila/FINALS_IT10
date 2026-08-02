@@ -81,39 +81,51 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </Link>
             {(user?.role === 'seller' || user?.role === 'reseller') && (
               <>
+                {user.status !== 'verified' && (
+                  <Link
+                    to="/seller/verification"
+                    className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/verification') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
+                  >
+                    Account Verification
+                  </Link>
+                )}
                 <Link
                   to="/seller/shop"
                   className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/shop') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
                 >
                   Shop Configuration
                 </Link>
-                <Link
-                  to="/seller/listings"
-                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/listings') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
-                >
-                  My Listings
-                </Link>
-                <Link
-                  to="/seller/orders"
-                  className={`relative flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/orders') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
-                >
-                  <span>Orders</span>
-                  {hasNewOrderNotification && (
-                    <span className="h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
-                  )}
-                </Link>
-                <Link
-                  to="/seller/riders"
-                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/riders') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
-                >
-                  Rider Registry
-                </Link>
-                <Link
-                  to="/seller/sales-report"
-                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/sales-report') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
-                >
-                  Sales Report
-                </Link>
+                {user.status === 'verified' && (
+                  <>
+                    <Link
+                      to="/seller/listings"
+                      className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/listings') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
+                    >
+                      My Listings
+                    </Link>
+                    <Link
+                      to="/seller/orders"
+                      className={`relative flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/orders') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
+                    >
+                      <span>Orders</span>
+                      {hasNewOrderNotification && (
+                        <span className="h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
+                      )}
+                    </Link>
+                    <Link
+                      to="/seller/riders"
+                      className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/riders') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
+                    >
+                      Rider Registry
+                    </Link>
+                    <Link
+                      to="/seller/sales-report"
+                      className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/sales-report') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
+                    >
+                      Sales Report
+                    </Link>
+                  </>
+                )}
               </>
             )}
             {isAdmin && (

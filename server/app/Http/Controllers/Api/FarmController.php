@@ -48,6 +48,7 @@ class FarmController extends Controller
             'description' => ['nullable', 'string'],
             'permit' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
             'permit_issue_date' => ['required', 'date'],
+            'permit_expiry_date' => ['required', 'date', 'after_or_equal:permit_issue_date'],
         ]);
 
         if ($validator->fails()) {
@@ -60,7 +61,11 @@ class FarmController extends Controller
         $farm->location = $data['location'];
         $farm->description = $data['description'] ?? null;
 
-        if ($request->hasFile('permit')) {
+        $permitChanged = $request->hasFile('permit');
+        $dateChanged = (!empty($data['permit_issue_date']) && $farm->permit_issue_date !== $data['permit_issue_date']) ||
+                       (!empty($data['permit_expiry_date']) && $farm->permit_expiry_date !== $data['permit_expiry_date']);
+
+        if ($permitChanged) {
             $permitPath = $request->file('permit')->store('permits', 'public');
             $farm->permit_file = $permitPath;
             // Mark as pending upon new upload
@@ -71,9 +76,17 @@ class FarmController extends Controller
 
         if (!empty($data['permit_issue_date'])) {
             $farm->permit_issue_date = $data['permit_issue_date'];
-            // Expiry is 1 year from issue date
-            $issueDate = Carbon::parse($data['permit_issue_date']);
-            $farm->permit_expiry_date = $issueDate->copy()->addYear()->toDateString();
+        }
+
+        if (!empty($data['permit_expiry_date'])) {
+            $farm->permit_expiry_date = $data['permit_expiry_date'];
+        }
+
+        if ($dateChanged && !$permitChanged) {
+            // Mark as pending upon date revision/update
+            $farm->permit_status = 'pending';
+            $user->status = 'pending';
+            $user->save();
         }
 
         // Suspended if permit is expired
