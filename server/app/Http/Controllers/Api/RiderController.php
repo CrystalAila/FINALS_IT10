@@ -23,7 +23,7 @@ class RiderController extends Controller
             return response()->json(['riders' => []]);
         }
 
-        $riders = Rider::where('farm_id', $farm->id)->latest()->get();
+        $riders = Rider::with('user')->where('farm_id', $farm->id)->latest()->get();
 
         // Map photo_path to absolute URLs or standard placeholders
         $riders->transform(function ($rider) {
@@ -56,6 +56,8 @@ class RiderController extends Controller
 
         $validator = Validator::make($request->all(), [
             'fullname' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'max:255', 'alpha_num', 'unique:users,username'],
+            'password' => ['required', 'string', 'min:6'],
             'phone' => ['required', 'string', 'max:30'],
             'photo' => ['nullable', 'image', 'max:2048'],
         ]);
@@ -69,19 +71,30 @@ class RiderController extends Controller
             $photoPath = $request->file('photo')->store('riders', 'public');
         }
 
+        $riderUser = \App\Models\User::create([
+            'fullname' => $request->input('fullname'),
+            'username' => $request->input('username'),
+            'password' => \Illuminate\Support\Facades\Hash::make($request->input('password')),
+            'role' => 'rider',
+            'status' => 'active',
+            'phone' => $request->input('phone'),
+        ]);
+
         $rider = Rider::create([
+            'user_id' => $riderUser->id,
             'farm_id' => $farm->id,
             'fullname' => $request->input('fullname'),
             'phone' => $request->input('phone'),
             'photo_path' => $photoPath,
         ]);
 
-        // Append photo_url
+        // Append photo_url and load user
         if ($photoPath) {
             $rider->photo_url = asset('storage/' . $photoPath);
         } else {
             $rider->photo_url = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80';
         }
+        $rider->load('user');
 
         ActivityLogService::log('Rider added to registry: ' . $rider->fullname, $user->id);
 
@@ -106,7 +119,12 @@ class RiderController extends Controller
             Storage::disk('public')->delete($rider->photo_path);
         }
 
+        $riderUser = \App\Models\User::find($rider->user_id);
         $rider->delete();
+
+        if ($riderUser) {
+            $riderUser->delete();
+        }
 
         ActivityLogService::log('Rider removed from registry: ' . $rider->fullname, $user->id);
 

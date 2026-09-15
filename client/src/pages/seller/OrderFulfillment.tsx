@@ -1,14 +1,20 @@
 import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import api from '../../lib/axios';
+import { useAuth } from '../../context/AuthContext';
 import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '../../types/marketplace';
 import type { Order, Rider } from '../../types/marketplace';
 
 const OrderFulfillment: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [riders, setRiders] = useState<Rider[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const basePath = user?.role === 'reseller' ? '/reseller' : '/seller';
 
   useEffect(() => {
     const loadData = async () => {
@@ -76,7 +82,11 @@ const OrderFulfillment: React.FC = () => {
       ) : (
         <div className="space-y-6">
           {orders.map((order) => (
-            <div key={order.id} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-card">
+            <div
+              key={order.id}
+              onClick={() => navigate(`${basePath}/orders/${order.id}`)}
+              className="cursor-pointer hover:border-brand/40 hover:shadow-md transition rounded-3xl border border-slate-200 bg-white p-6 shadow-card"
+            >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-slate-700">Order #{order.id}</p>
@@ -151,22 +161,33 @@ const OrderFulfillment: React.FC = () => {
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <div>
+                <div onClick={(e) => e.stopPropagation()}>
                   <label className="mb-2 block text-sm font-semibold text-slate-700">Change status</label>
                   <select
                     value={order.status}
                     onChange={(e) => updateStatus(order.id, e.target.value as Order['status'])}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                    disabled={order.delivery_type === 'delivery' && ['completed', 'cancelled', 'out_for_delivery'].includes(order.status)}
                   >
-                    {Object.keys(ORDER_STATUS_LABELS).map((status) => (
+                    {Object.keys(ORDER_STATUS_LABELS).filter(status => {
+                      if (status === 'out_for_delivery') return false;
+                      if (order.delivery_type === 'delivery' && (status === 'completed' || status === 'cancelled')) return false;
+                      return true;
+                    }).map((status) => (
                       <option key={status} value={status}>
                         {ORDER_STATUS_LABELS[status as keyof typeof ORDER_STATUS_LABELS]}
                       </option>
                     ))}
+                    {(order.delivery_type === 'delivery' && ['completed', 'cancelled', 'out_for_delivery'].includes(order.status)) && (
+                       <option value={order.status} className="hidden">{ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS]}</option>
+                    )}
                   </select>
+                  {order.delivery_type === 'delivery' && (
+                    <p className="mt-1 text-xs text-slate-500">Rider handles final delivery statuses.</p>
+                  )}
                 </div>
                 {order.delivery_type === 'delivery' && (
-                  <div>
+                  <div onClick={(e) => e.stopPropagation()}>
                     <label className="mb-2 block text-sm font-semibold text-slate-700">Assign rider</label>
                     <select
                       value={order.rider_id ?? ''}

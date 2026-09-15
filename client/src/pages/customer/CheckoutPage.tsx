@@ -19,6 +19,33 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState<number | null>(null);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
 
+  // Distance mock calculator matching backend
+  const calculateDistanceMock = (origin: string, destination: string) => {
+    const str = origin.toLowerCase() + destination.toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    let val = Math.abs(hash);
+    if (val >= 2147483648) {
+      val = Math.abs(val - 4294967296);
+    }
+    return (val % 15) + 1;
+  };
+
+  const farmLocation = items.length > 0 ? (items[0].farmLocation || 'Roxas City, Capiz') : 'Roxas City, Capiz';
+  const customerLocation = savedAddress ? `${savedAddress.streetAddress} ${savedAddress.region}` : ' ';
+  
+  const distanceKm = deliveryType === 'delivery' && savedAddress ? calculateDistanceMock(farmLocation, customerLocation) : 0;
+  
+  const shippingFee = deliveryType === 'delivery' && distanceKm > 0
+    ? (distanceKm <= 2 ? 45 : 45 + ((distanceKm - 2) * 6))
+    : 0;
+    
+  const totalPrice = subtotal + shippingFee;
+
   const [addressForm, setAddressForm] = useState<DeliveryAddress>(
     savedAddress ?? {
       fullName: '',
@@ -266,9 +293,31 @@ export default function CheckoutPage() {
             </li>
           ))}
         </ul>
+        
+        <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>Items Price (Subtotal)</span>
+            <span>{formatPrice(subtotal)}</span>
+          </div>
+          
+          {deliveryType === 'delivery' && (
+            <div className="flex justify-between text-sm text-gray-600">
+              <div className="flex flex-col">
+                <span>Shipping Fee</span>
+                {savedAddress && (
+                  <span className="text-xs text-gray-400">
+                    Distance: ~{distanceKm} km
+                  </span>
+                )}
+              </div>
+              <span>{formatPrice(shippingFee)}</span>
+            </div>
+          )}
+        </div>
+        
         <div className="mt-4 flex justify-between border-t border-gray-100 pt-4">
-          <span className="text-lg font-semibold">Total</span>
-          <span className="text-xl font-bold text-gray-900">{formatPrice(subtotal)}</span>
+          <span className="text-lg font-semibold text-gray-900">Total Price</span>
+          <span className="text-xl font-bold text-brand">{formatPrice(totalPrice)}</span>
         </div>
         <button
           type="button"

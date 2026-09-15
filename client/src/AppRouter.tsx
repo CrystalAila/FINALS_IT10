@@ -6,6 +6,11 @@ import SellerRegister from './pages/SellerRegister';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import CustomerRoutes from './pages/customer/CustomerRoutes';
+import GoogleCallback from './pages/GoogleCallback';
+import GoogleRegisterComplete from './pages/GoogleRegisterComplete';
+import RiderLogin from './pages/rider/RiderLogin';
+import RiderDashboard from './pages/rider/RiderDashboard';
+import RiderOrderDetails from './pages/rider/RiderOrderDetails';
 import SellerRoutes from './pages/seller/SellerRoutes';
 import AdminDashboard from './pages/dashboards/AdminDashboard';
 import AdminUsers from './pages/AdminUsers';
@@ -24,6 +29,7 @@ const AppRouter: React.FC = () => {
     if (!user) return '/login';
     if (user.role === 'customer') return '/customer';
     if (user.role === 'admin') return '/admin/dashboard';
+    if (user.role === 'rider') return '/rider/dashboard';
     return '/seller/dashboard';
   };
 
@@ -36,6 +42,26 @@ const AppRouter: React.FC = () => {
         <Route path="/seller-register" element={<SellerRegister />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/auth/callback" element={<GoogleCallback />} />
+        <Route path="/register/google-complete" element={<GoogleRegisterComplete />} />
+        <Route path="/rider/login" element={<RiderLogin />} />
+
+        <Route
+          path="/rider/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['rider']}>
+              <RiderDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/rider/orders/:id"
+          element={
+            <ProtectedRoute allowedRoles={['rider']}>
+              <RiderOrderDetails />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/customer/*"

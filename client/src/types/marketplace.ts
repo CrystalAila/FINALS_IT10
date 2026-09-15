@@ -41,6 +41,7 @@ export type CartItem = {
   image: string | null;
   farmId: number;
   farmName: string;
+  farmLocation?: string;
   size: ProductSize;
   quantity: number;
   unitPrice: number;
@@ -95,7 +96,7 @@ export function displayRating(rating: string | number): string {
   return Number(rating).toFixed(1);
 }
 
-export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'ready' | 'completed' | 'cancelled';
+export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'ready' | 'out_for_delivery' | 'completed' | 'cancelled';
 
 export type Rider = {
   id: number;
@@ -106,6 +107,7 @@ export type Rider = {
   photo_url?: string;
   created_at?: string;
   updated_at?: string;
+  user?: any;
 };
 
 export type OrderItem = {
@@ -166,6 +168,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   confirmed: 'Confirmed',
   processing: 'Processing',
   ready: 'Ready',
+  out_for_delivery: 'Out for Delivery',
   completed: 'Completed',
   cancelled: 'Cancelled',
 };
@@ -175,6 +178,7 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   confirmed: 'bg-orange-100 text-orange-800',
   processing: 'bg-blue-100 text-blue-800',
   ready: 'bg-purple-100 text-purple-800',
+  out_for_delivery: 'bg-indigo-100 text-indigo-800',
   completed: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
 };

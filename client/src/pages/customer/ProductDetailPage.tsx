@@ -78,6 +78,7 @@ export default function ProductDetailPage() {
       image: product.image ?? null,
       farmId: product.farm_id,
       farmName: product.farm?.name ?? 'Local Farm',
+      farmLocation: product.farm?.location ?? 'Roxas City, Capiz',
       size,
       unitPrice: priceForSize(product, size),
       quantity,

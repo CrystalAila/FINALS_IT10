@@ -11,7 +11,7 @@ class Product extends Model
         'farm_id', 'name', 'description', 'image', 'category',
         'price_small', 'price_medium', 'price_large', 'price_jumbo',
         'stock', 'stock_small', 'stock_medium', 'stock_large', 'stock_jumbo',
-        'farm_origin', 'rating', 'is_active',
+        'farm_origin', 'rating', 'is_active', 'is_flagged',
     ];
 
     protected $casts = [
@@ -25,6 +25,7 @@ class Product extends Model
         'stock_jumbo' => 'integer',
         'rating' => 'decimal:2',
         'is_active' => 'boolean',
+        'is_flagged' => 'boolean',
     ];
 
     public function farm(): BelongsTo

@@ -11,46 +11,37 @@ use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::where('role', '!=', 'customer')
-            ->with('farm')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $role = $request->query('role');
+        $search = $request->query('search');
 
-        $riders = \App\Models\Rider::with('farm')->get()->map(function ($rider) {
-            return [
-                'id' => 1000000 + $rider->id,
-                'fullname' => $rider->fullname,
-                'username' => 'Rider Phone: ' . $rider->phone,
-                'role' => 'rider',
-                'created_at' => $rider->created_at ? $rider->created_at->toIso8601String() : null,
-                'updated_at' => $rider->updated_at ? $rider->updated_at->toIso8601String() : null,
-                'is_rider' => true,
-                'real_rider_id' => $rider->id,
-                'phone' => $rider->phone,
-                'farm' => $rider->farm ? [
-                    'name' => $rider->farm->name,
-                    'location' => $rider->farm->location,
-                    'description' => $rider->farm->description,
-                ] : null,
-            ];
-        });
+        $query = User::whereIn('role', ['seller', 'reseller', 'rider', 'admin'])
+            ->with(['farm', 'rider.farm'])
+            ->orderBy('created_at', 'desc');
 
-        $combined = $users->map(function ($u) {
-            return [
-                'id' => $u->id,
-                'fullname' => $u->fullname,
-                'username' => $u->username,
-                'role' => $u->role,
-                'created_at' => $u->created_at ? $u->created_at->toIso8601String() : null,
-                'updated_at' => $u->updated_at ? $u->updated_at->toIso8601String() : null,
-                'is_rider' => false,
-                'status' => $u->status,
-                'business_name' => $u->business_name,
-                'email' => $u->email,
-                'phone' => $u->phone,
-                'farm' => $u->farm ? [
+        if ($role && $role !== 'all') {
+            if ($role === 'seller') {
+                $query->whereIn('role', ['seller', 'reseller']);
+            } else {
+                $query->where('role', $role);
+            }
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('fullname', 'like', "%{$search}%")
+                  ->orWhere('username', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhereHas('farm', fn ($f) => $f->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $users = $query->get()->map(function ($u) {
+            $farm = null;
+            if ($u->farm) {
+                $farm = [
                     'name' => $u->farm->name,
                     'location' => $u->farm->location,
                     'description' => $u->farm->description,
@@ -58,11 +49,34 @@ class UserController extends Controller
                     'permit_status' => $u->farm->permit_status,
                     'permit_issue_date' => $u->farm->permit_issue_date,
                     'permit_expiry_date' => $u->farm->permit_expiry_date,
-                ] : null,
-            ];
-        })->concat($riders);
+                ];
+            } elseif ($u->rider && $u->rider->farm) {
+                $farm = [
+                    'name' => $u->rider->farm->name,
+                    'location' => $u->rider->farm->location,
+                    'description' => $u->rider->farm->description,
+                ];
+            }
 
-        return response()->json(['users' => $combined]);
+            $phone = $u->phone ?: ($u->rider ? $u->rider->phone : null);
+
+            return [
+                'id' => $u->id,
+                'fullname' => $u->fullname,
+                'username' => $u->username,
+                'role' => $u->role,
+                'created_at' => $u->created_at ? $u->created_at->toIso8601String() : null,
+                'updated_at' => $u->updated_at ? $u->updated_at->toIso8601String() : null,
+                'is_rider' => $u->role === 'rider',
+                'status' => $u->status,
+                'business_name' => $u->business_name,
+                'email' => $u->email,
+                'phone' => $phone,
+                'farm' => $farm,
+            ];
+        });
+
+        return response()->json(['users' => $users]);
     }
 
     public function show($id)
@@ -304,12 +318,22 @@ class UserController extends Controller
     public function getReportsSummary(Request $request)
     {
         $totalSellers = User::whereIn('role', ['seller', 'reseller'])->count();
-        $verifiedSellers = User::whereIn('role', ['seller', 'reseller'])->where('status', 'verified')->count();
-        $pendingPermits = User::whereIn('role', ['seller', 'reseller'])->whereIn('status', ['pending', 'under_review'])->count();
+        $verifiedSellers = User::whereIn('role', ['seller', 'reseller'])
+            ->where(function ($q) {
+                $q->where('status', 'verified')
+                  ->orWhereHas('farm', fn ($f) => $f->where('permit_status', 'approved'));
+            })
+            ->count();
+        $pendingPermits = User::whereIn('role', ['seller', 'reseller'])
+            ->where(function ($q) {
+                $q->whereIn('status', ['pending', 'under_review'])
+                  ->orWhereHas('farm', fn ($f) => $f->whereIn('permit_status', ['pending', 'under_review']));
+            })
+            ->count();
 
         $totalOrders = \App\Models\Order::count();
         $completedOrders = \App\Models\Order::where('status', 'completed')->count();
-        $totalRevenue = \App\Models\Order::where('status', 'completed')->sum('total');
+        $totalRevenue = (float) \App\Models\Order::where('status', 'completed')->sum('total');
 
         // Let's also get counts for order statuses
         $orderStats = [
@@ -321,9 +345,13 @@ class UserController extends Controller
             'cancelled' => \App\Models\Order::where('status', 'cancelled')->count(),
         ];
 
-        // Let's get daily sales for the last 15 days
+        // Daily sales for the last 15 days
+        $startDate = now()->subDays(14)->startOfDay();
         $dailySales = \App\Models\Order::where('status', 'completed')
-            ->where('created_at', '>=', now()->subDays(14)->startOfDay())
+            ->where(function ($q) use ($startDate) {
+                $q->where('created_at', '>=', $startDate)
+                  ->orWhere('updated_at', '>=', $startDate);
+            })
             ->selectRaw('DATE(created_at) as date, SUM(total) as total')
             ->groupBy('date')
             ->get()
@@ -331,9 +359,11 @@ class UserController extends Controller
 
         $chartData = [];
         for ($i = 14; $i >= 0; $i--) {
-            $dateStr = now()->subDays($i)->format('Y-m-d');
+            $date = now()->subDays($i);
+            $dateStr = $date->format('Y-m-d');
             $chartData[] = [
-                'label' => now()->subDays($i)->format('M d'),
+                'label' => $date->format('M d'),
+                'date' => $dateStr,
                 'revenue' => (float) ($dailySales[$dateStr] ?? 0),
             ];
         }
@@ -341,7 +371,7 @@ class UserController extends Controller
         // Recent transactions
         $recentTransactions = \App\Models\Order::with('customer')
             ->orderBy('id', 'desc')
-            ->limit(5)
+            ->limit(10)
             ->get()
             ->map(function ($order) {
                 return [
@@ -358,10 +388,207 @@ class UserController extends Controller
             'verified_sellers' => $verifiedSellers,
             'pending_permits' => $pendingPermits,
             'total_orders' => $totalOrders,
-            'total_revenue' => (float) $totalRevenue,
+            'total_revenue' => $totalRevenue,
             'order_stats' => $orderStats,
             'chart_data' => $chartData,
             'recent_transactions' => $recentTransactions,
         ]);
     }
+
+    public function getDashboardStats(Request $request)
+    {
+        // 1. Registered Sellers (seller, reseller)
+        $registeredSellers = User::whereIn('role', ['seller', 'reseller'])->count();
+
+        // 2. Verified Sellers
+        $verifiedSellers = User::whereIn('role', ['seller', 'reseller'])
+            ->where(function ($q) {
+                $q->where('status', 'verified')
+                  ->orWhereHas('farm', fn ($f) => $f->where('permit_status', 'approved'));
+            })
+            ->count();
+
+        // 3. Total Buyers
+        $buyers = User::where('role', 'customer')->count();
+
+        // 4. Products Listed
+        $products = \App\Models\Product::count();
+
+        // 5. Total Transactions
+        $transactions = \App\Models\Order::count();
+
+        // 6. Pending Permits (sellers with status pending or under_review)
+        $pendingPermits = User::whereIn('role', ['seller', 'reseller'])
+            ->where(function ($q) {
+                $q->whereIn('status', ['pending', 'under_review'])
+                  ->orWhereHas('farm', fn ($f) => $f->whereIn('permit_status', ['pending', 'under_review']));
+            })
+            ->count();
+
+        // 7. Revenue (completed orders)
+        $revenue = (float) \App\Models\Order::where('status', 'completed')->sum('total');
+
+        // 8. Flagged Listings
+        // Listings flagged explicitly OR belonging to suspended/rejected sellers/farms
+        $flaggedListings = \App\Models\Product::where('is_flagged', true)
+            ->orWhereHas('farm', function ($q) {
+                $q->whereIn('permit_status', ['suspended', 'rejected'])
+                  ->orWhereHas('user', fn ($u) => $u->where('status', 'suspended'));
+            })
+            ->count();
+
+        // Weekly activity: last 7 days of orders
+        $weeklyActivity = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $targetDate = now()->subDays($i);
+            $dateStr = $targetDate->format('Y-m-d');
+            $dayName = $targetDate->format('l');
+            $shortDate = $targetDate->format('M d');
+            $orderCount = \App\Models\Order::whereDate('created_at', $dateStr)->count();
+
+            $weeklyActivity[] = [
+                'day' => $dayName,
+                'date' => $shortDate,
+                'orders' => $orderCount,
+            ];
+        }
+
+        return response()->json([
+            'registeredSellers' => $registeredSellers,
+            'verifiedSellers' => $verifiedSellers,
+            'buyers' => $buyers,
+            'products' => $products,
+            'transactions' => $transactions,
+            'pendingPermits' => $pendingPermits,
+            'revenue' => $revenue,
+            'flaggedListings' => $flaggedListings,
+            'weeklyActivity' => $weeklyActivity,
+        ]);
+    }
+
+    public function getRecentActivity(Request $request)
+    {
+        $limit = (int) $request->query('limit', 5);
+        $logs = \App\Models\Log::with('user')
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'activity' => $log->activity,
+                    'user' => $log->user ? ($log->user->fullname ?? $log->user->username) : 'System',
+                    'created_at' => $log->created_at ? $log->created_at->diffForHumans() : '',
+                ];
+            });
+
+        return response()->json($logs);
+    }
+
+    public function getAdminProducts(Request $request)
+    {
+        $statusFilter = $request->query('status'); // 'all', 'active', 'inactive', 'flagged'
+        $search = $request->query('search');
+
+        // Top summary metrics
+        $totalActiveProducts = \App\Models\Product::where('is_active', true)->count();
+        $activeSellers = User::whereIn('role', ['seller', 'reseller'])
+            ->where(function ($q) {
+                $q->where('status', 'verified')
+                  ->orWhereHas('farm', fn ($f) => $f->where('permit_status', 'approved'));
+            })
+            ->count();
+        $ordersToday = \App\Models\Order::whereDate('created_at', now()->format('Y-m-d'))->count();
+
+        $query = \App\Models\Product::with(['farm.user'])->orderBy('id', 'desc');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('category', 'like', "%{$search}%")
+                  ->orWhere('farm_origin', 'like', "%{$search}%")
+                  ->orWhereHas('farm', function ($f) use ($search) {
+                      $f->where('name', 'like', "%{$search}%")
+                        ->orWhere('location', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $allProducts = $query->get();
+
+        $mapped = $allProducts->map(function ($product) {
+            $farm = $product->farm;
+            $seller = $farm ? $farm->user : null;
+
+            $isFlagged = (bool) $product->is_flagged ||
+                ($farm && in_array($farm->permit_status, ['suspended', 'rejected'])) ||
+                ($farm && $farm->is_permit_expired) ||
+                ($seller && $seller->status === 'suspended');
+
+            $verificationStatus = 'Verified';
+            if ($isFlagged) {
+                $verificationStatus = 'Flagged';
+            } elseif (!$farm || $farm->permit_status === 'pending' || $farm->permit_status === 'under_review') {
+                $verificationStatus = 'Pending';
+            }
+
+            $uiStatus = 'Active';
+            if ($seller && $seller->status === 'suspended') {
+                $uiStatus = 'Suspended';
+            } elseif (!$product->is_active) {
+                $uiStatus = 'Inactive';
+            }
+
+            $price = (float) ($product->price_medium > 0 ? $product->price_medium : ($product->price_small > 0 ? $product->price_small : $product->price_large));
+
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'seller' => $farm ? $farm->name : ($seller ? ($seller->business_name ?? $seller->fullname) : 'Unknown Seller'),
+                'farm_origin' => $product->farm_origin ?: ($farm && $farm->location ? $farm->location : 'Capiz, Philippines'),
+                'verification_status' => $verificationStatus,
+                'status' => $uiStatus,
+                'price' => $price,
+                'image' => $product->image,
+                'category' => $product->category,
+                'stock' => $product->stock,
+                'is_flagged' => (bool) $product->is_flagged,
+            ];
+        });
+
+        // Filter by status
+        if ($statusFilter && $statusFilter !== 'all') {
+            if ($statusFilter === 'active') {
+                $mapped = $mapped->filter(fn ($p) => $p['status'] === 'Active' && $p['verification_status'] !== 'Flagged')->values();
+            } elseif ($statusFilter === 'inactive') {
+                $mapped = $mapped->filter(fn ($p) => $p['status'] === 'Inactive')->values();
+            } elseif ($statusFilter === 'flagged') {
+                $mapped = $mapped->filter(fn ($p) => $p['verification_status'] === 'Flagged')->values();
+            }
+        }
+
+        return response()->json([
+            'stats' => [
+                'live_listings' => $totalActiveProducts,
+                'active_sellers' => $activeSellers,
+                'orders_today' => $ordersToday,
+            ],
+            'products' => $mapped,
+        ]);
+    }
+
+    public function toggleProductFlag($id)
+    {
+        $product = \App\Models\Product::findOrFail($id);
+        $product->is_flagged = !$product->is_flagged;
+        $product->save();
+
+        ActivityLogService::log("Admin toggled flag for product {$product->name}");
+
+        return response()->json([
+            'message' => $product->is_flagged ? 'Product has been flagged' : 'Product flag removed',
+            'product' => $product,
+        ]);
+    }
 }
+

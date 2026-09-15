@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
 import api from '../lib/axios';
@@ -7,7 +7,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout, logActivity } = useAuth();
   const location = useLocation();
   const [hasNewOrderNotification, setHasNewOrderNotification] = useState(false);
-  const [prevPath, setPrevPath] = useState(location.pathname);
+  const prevPathRef = useRef(location.pathname);
 
   useEffect(() => {
     if (user && logActivity) {
@@ -18,7 +18,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   useEffect(() => {
     if (user?.role !== 'seller' && user?.role !== 'reseller') return;
 
-    const checkNewOrders = async (isPageLoad = false) => {
+    const checkNewOrders = async (isTransition = false) => {
       try {
         const res = await api.get('/seller/orders');
         const orders = res.data.orders ?? [];
@@ -27,13 +27,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         const lastSeen = localStorage.getItem('seller_last_seen_order_count');
         const lastSeenCount = lastSeen ? parseInt(lastSeen, 10) : null;
 
-        if (location.pathname === '/seller/orders') {
-          if (isPageLoad || lastSeenCount === null) {
-            localStorage.setItem('seller_last_seen_order_count', String(currentCount));
-            setHasNewOrderNotification(false);
-          } else if (currentCount > lastSeenCount) {
-            setHasNewOrderNotification(true);
-          }
+        const isViewingOrders = location.pathname === '/seller/orders' || location.pathname.startsWith('/seller/orders/') ||
+                                location.pathname === '/reseller/orders' || location.pathname.startsWith('/reseller/orders/');
+
+        if (isViewingOrders) {
+          localStorage.setItem('seller_last_seen_order_count', String(currentCount));
+          setHasNewOrderNotification(false);
         } else {
           if (lastSeenCount !== null && currentCount > lastSeenCount) {
             setHasNewOrderNotification(true);
@@ -46,14 +45,19 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       }
     };
 
-    const isEnteringOrdersPage = location.pathname === '/seller/orders' && prevPath !== '/seller/orders';
-    setPrevPath(location.pathname);
+    const wasViewingOrders = prevPathRef.current === '/seller/orders' || prevPathRef.current.startsWith('/seller/orders/') ||
+                             prevPathRef.current === '/reseller/orders' || prevPathRef.current.startsWith('/reseller/orders/');
+    const isViewingOrders = location.pathname === '/seller/orders' || location.pathname.startsWith('/seller/orders/') ||
+                            location.pathname === '/reseller/orders' || location.pathname.startsWith('/reseller/orders/');
+    const hasTransitioned = isViewingOrders && !wasViewingOrders;
 
-    checkNewOrders(isEnteringOrdersPage);
+    prevPathRef.current = location.pathname;
+
+    checkNewOrders(hasTransitioned);
 
     const interval = setInterval(() => checkNewOrders(false), 15000);
     return () => clearInterval(interval);
-  }, [location.pathname, user, prevPath]);
+  }, [location.pathname, user]);
 
   const basePath = user?.role === 'customer' ? '/customer' : user ? `/${user.role}` : '/';
   const dashboardPath = user?.role === 'admin' ? '/admin/dashboard' : `${basePath}/dashboard`;
@@ -105,6 +109,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     </Link>
                     <Link
                       to="/seller/orders"
+                      onClick={() => setHasNewOrderNotification(false)}
                       className={`relative flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/orders') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
                     >
                       <span>Orders</span>

@@ -9,7 +9,7 @@ export type User = {
   email?: string | null;
   phone?: string | null;
   google_id?: string | null;
-  role: 'customer' | 'reseller' | 'seller' | 'admin';
+  role: 'customer' | 'reseller' | 'seller' | 'admin' | 'rider';
   status?: 'pending' | 'under_review' | 'verified' | 'suspended' | 'rejected' | 'active';
   farm?: any;
 };

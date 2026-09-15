@@ -4,6 +4,7 @@ import ShopConfiguration from './ShopConfiguration';
 import MyListings from './MyListings';
 import CreateProduct from './CreateProduct';
 import OrderFulfillment from './OrderFulfillment';
+import SellerOrderDetailPage from './SellerOrderDetailPage';
 import RiderRegistry from './RiderRegistry';
 import SellerVerification from './SellerVerification';
 import SalesReport from './SalesReport';
@@ -17,6 +18,7 @@ export default function SellerRoutes() {
       <Route path="listings/new" element={<CreateProduct />} />
       <Route path="listings/edit/:id" element={<CreateProduct />} />
       <Route path="orders" element={<OrderFulfillment />} />
+      <Route path="orders/:id" element={<SellerOrderDetailPage />} />
       <Route path="riders" element={<RiderRegistry />} />
       <Route path="verification" element={<SellerVerification />} />
       <Route path="sales-report" element={<SalesReport />} />

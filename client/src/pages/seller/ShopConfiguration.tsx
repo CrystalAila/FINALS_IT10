@@ -172,7 +172,7 @@ const ShopConfiguration: React.FC = () => {
               value={form.permitIssueDate}
               onChange={(e) => handleChange('permitIssueDate', e.target.value)}
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-              required
+              required={!!form.permit}
             />
           </div>
           <div>
@@ -182,7 +182,7 @@ const ShopConfiguration: React.FC = () => {
               value={form.permitExpiryDate}
               onChange={(e) => handleChange('permitExpiryDate', e.target.value)}
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-              required
+              required={!!form.permit}
             />
           </div>
           <div className="lg:col-span-2">

@@ -9,6 +9,8 @@ const RiderRegistry: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [fullname, setFullname] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,8 +40,8 @@ const RiderRegistry: React.FC = () => {
     event.preventDefault();
     setError(null);
 
-    if (!fullname.trim() || !phone.trim()) {
-      setError('Full name and phone number are required.');
+    if (!fullname.trim() || !phone.trim() || !username.trim() || !password.trim()) {
+      setError('Full name, username, password, and phone number are required.');
       return;
     }
 
@@ -47,6 +49,8 @@ const RiderRegistry: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('fullname', fullname.trim());
+      formData.append('username', username.trim());
+      formData.append('password', password.trim());
       formData.append('phone', phone.trim());
       if (photoFile) {
         formData.append('photo', photoFile);
@@ -61,6 +65,8 @@ const RiderRegistry: React.FC = () => {
       setRiders((current) => [res.data.rider, ...current]);
       setShowForm(false);
       setFullname('');
+      setUsername('');
+      setPassword('');
       setPhone('');
       setPhotoFile(null);
     } catch (err: any) {
@@ -115,6 +121,33 @@ const RiderRegistry: React.FC = () => {
                 id="riderFullname"
                 value={fullname}
                 onChange={(e) => setFullname(e.target.value)}
+                className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="riderUsername" className="block text-sm font-semibold text-slate-700">
+                Username (for login)
+              </label>
+              <input
+                id="riderUsername"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="riderPassword" className="block text-sm font-semibold text-slate-700">
+                Password
+              </label>
+              <input
+                id="riderPassword"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
                 required
               />
@@ -187,6 +220,10 @@ const RiderRegistry: React.FC = () => {
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Rider</p>
                   <h2 className="mt-2 text-xl font-semibold text-slate-900">{rider.fullname}</h2>
+                </div>
+                <div className="rounded-3xl bg-slate-50 p-4 text-sm text-slate-700">
+                  <p className="text-slate-500">Username</p>
+                  <p className="mt-1 font-medium">{rider.user?.username || 'N/A'}</p>
                 </div>
                 <div className="rounded-3xl bg-slate-50 p-4 text-sm text-slate-700">
                   <p className="text-slate-500">Phone</p>

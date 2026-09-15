@@ -14,6 +14,23 @@ use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
 {
+    private function calculateDistanceMock($origin, $destination)
+    {
+        $str = strtolower($origin) . strtolower($destination);
+        $hash = 0;
+        for ($i = 0; $i < strlen($str); $i++) {
+            $char = ord($str[$i]);
+            $hash = (($hash << 5) - $hash) + $char;
+            $hash = $hash & 0xFFFFFFFF;
+        }
+        $val = abs($hash);
+        if ($val >= 2147483648) {
+            // Adjust for JS Math.abs behavior on 32-bit signed ints
+            $val = $val - 4294967296;
+            $val = abs($val);
+        }
+        return ($val % 15) + 1;
+    }
     public function index(Request $request)
     {
         $orders = Order::with(['farm:id,name,location', 'items.product:id,name,image'])
@@ -102,6 +119,16 @@ class OrderController extends Controller
                     $product->decrement('stock', $item['quantity']);
                 }
 
+                $shippingFee = 0;
+                if ($data['delivery_type'] === 'delivery') {
+                    $firstProduct = Product::with('farm')->find($data['items'][0]['product_id']);
+                    $farmLocation = $firstProduct->farm->location ?? 'Roxas City, Capiz';
+                    $customerAddress = ($data['address_line'] ?? '') . ' ' . ($data['city'] ?? '');
+                    $distance = $this->calculateDistanceMock($farmLocation, $customerAddress);
+                    $shippingFee = $distance <= 2 ? 45 : 45 + (($distance - 2) * 6);
+                }
+                $total += $shippingFee;
+
                 $order = Order::create([
                     'customer_id' => $request->user()->id,
                     'farm_id' => $farmId,
@@ -109,6 +136,7 @@ class OrderController extends Controller
                     'delivery_type' => $data['delivery_type'],
                     'payment_method' => $data['payment_method'],
                     'total' => $total,
+                    'shipping_fee' => $shippingFee,
                     'address_line' => $data['address_line'] ?? null,
                     'city' => $data['city'] ?? null,
                     'province' => $data['province'] ?? null,
@@ -153,6 +181,25 @@ class OrderController extends Controller
     }
 
     /**
+     * Get details of a specific order for the authenticated seller's farm.
+     */
+    public function sellerShow(Request $request, int $id)
+    {
+        $user = $request->user();
+        $farm = $user->farm;
+
+        if (!$farm) {
+            return response()->json(['message' => 'Farm not configured.'], 403);
+        }
+
+        $order = Order::with(['customer:id,fullname,username,phone', 'items.product:id,name,image,category', 'rider', 'farm'])
+            ->where('farm_id', $farm->id)
+            ->findOrFail($id);
+
+        return response()->json(['order' => $order]);
+    }
+
+    /**
      * Update the status of an order.
      */
     public function updateStatus(Request $request, int $id)
@@ -175,6 +222,10 @@ class OrderController extends Controller
         $order = Order::with('items')->where('farm_id', $farm->id)->findOrFail($id);
         $oldStatus = $order->status;
         $newStatus = $request->input('status');
+
+        if ($order->delivery_type === 'delivery' && in_array($newStatus, ['completed', 'cancelled'])) {
+            return response()->json(['message' => 'Rider is the only one who can complete or cancel a delivery order.'], 403);
+        }
 
         if ($oldStatus === $newStatus) {
             return response()->json(['order' => $order->load(['customer', 'items.product', 'rider'])]);

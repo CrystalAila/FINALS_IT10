@@ -8,11 +8,15 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\RiderController;
 use App\Http\Controllers\Api\FarmController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\RiderOrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/auth/google', [AuthController::class, 'googleLogin']);
+Route::get('/auth/google/redirect', [AuthController::class, 'googleRedirect']);
+Route::get('/auth/google/callback', [AuthController::class, 'googleCallback'])->name('google.callback');
+Route::post('/auth/google/register', [AuthController::class, 'googleRegister']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
@@ -48,6 +52,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Seller & Reseller Routes
     Route::middleware([\App\Http\Middleware\RoleMiddleware::class . ':seller,reseller'])->group(function () {
         Route::get('/seller/orders', [OrderController::class, 'sellerIndex']);
+        Route::get('/seller/orders/{id}', [OrderController::class, 'sellerShow']);
         Route::put('/seller/orders/{id}/status', [OrderController::class, 'updateStatus']);
         Route::put('/seller/orders/{id}/assign-rider', [OrderController::class, 'assignRider']);
 
@@ -65,8 +70,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/seller/sales-report', [OrderController::class, 'salesReport']);
     });
 
+    // Rider Routes
+    Route::middleware([\App\Http\Middleware\RoleMiddleware::class . ':rider'])->group(function () {
+        Route::get('/rider/orders', [RiderOrderController::class, 'index']);
+        Route::get('/rider/orders/{id}', [RiderOrderController::class, 'show']);
+        Route::put('/rider/orders/{id}/status', [RiderOrderController::class, 'updateStatus']);
+    });
+
     // Admin Routes
     Route::middleware([\App\Http\Middleware\RoleMiddleware::class . ':admin'])->group(function () {
+        Route::get('/admin/dashboard-stats', [UserController::class, 'getDashboardStats']);
+        Route::get('/admin/recent-activity', [UserController::class, 'getRecentActivity']);
         Route::get('/admin/users', [UserController::class, 'index']);
         Route::get('/admin/users/{id}', [UserController::class, 'show']);
         Route::post('/admin/users', [UserController::class, 'store']);
@@ -74,6 +88,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/admin/users/{id}', [UserController::class, 'destroy']);
         Route::get('/admin/logs', [LogController::class, 'index']);
         Route::get('/admin/reports/summary', [UserController::class, 'getReportsSummary']);
+        Route::get('/admin/products', [UserController::class, 'getAdminProducts']);
+        Route::put('/admin/products/{id}/toggle-flag', [UserController::class, 'toggleProductFlag']);
 
         // Permit Verification Routes
         Route::get('/admin/permits', [UserController::class, 'getPermits']);

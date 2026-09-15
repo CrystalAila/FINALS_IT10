@@ -47,8 +47,8 @@ class FarmController extends Controller
             'location' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'permit' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
-            'permit_issue_date' => ['required', 'date'],
-            'permit_expiry_date' => ['required', 'date', 'after_or_equal:permit_issue_date'],
+            'permit_issue_date' => ['nullable', 'required_with:permit', 'date'],
+            'permit_expiry_date' => ['nullable', 'required_with:permit', 'date', 'after_or_equal:permit_issue_date'],
         ]);
 
         if ($validator->fails()) {
@@ -62,8 +62,13 @@ class FarmController extends Controller
         $farm->description = $data['description'] ?? null;
 
         $permitChanged = $request->hasFile('permit');
-        $dateChanged = (!empty($data['permit_issue_date']) && $farm->permit_issue_date !== $data['permit_issue_date']) ||
-                       (!empty($data['permit_expiry_date']) && $farm->permit_expiry_date !== $data['permit_expiry_date']);
+        
+        $oldIssue = $farm->permit_issue_date ? Carbon::parse($farm->permit_issue_date)->format('Y-m-d') : null;
+        $newIssue = !empty($data['permit_issue_date']) ? Carbon::parse($data['permit_issue_date'])->format('Y-m-d') : null;
+        $oldExpiry = $farm->permit_expiry_date ? Carbon::parse($farm->permit_expiry_date)->format('Y-m-d') : null;
+        $newExpiry = !empty($data['permit_expiry_date']) ? Carbon::parse($data['permit_expiry_date'])->format('Y-m-d') : null;
+
+        $dateChanged = ($newIssue && $oldIssue !== $newIssue) || ($newExpiry && $oldExpiry !== $newExpiry);
 
         if ($permitChanged) {
             $permitPath = $request->file('permit')->store('permits', 'public');
@@ -90,7 +95,7 @@ class FarmController extends Controller
         }
 
         // Suspended if permit is expired
-        if ($farm->permit_expiry_date && Carbon::parse($farm->permit_expiry_date)->isPast()) {
+        if ($farm->permit_expiry_date && Carbon::parse($farm->permit_expiry_date)->endOfDay()->isPast()) {
             $farm->permit_status = 'suspended';
             $user->status = 'suspended';
             $user->save();

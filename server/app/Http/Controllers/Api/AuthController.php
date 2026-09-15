@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Support\Carbon;
+use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
@@ -232,6 +233,181 @@ class AuthController extends Controller
         $token = $user->createToken('api-token')->plainTextToken;
 
         ActivityLogService::log('User logged in via Google', $user->id);
+
+        if (in_array($user->role, ['seller', 'reseller'])) {
+            $user->load('farm');
+        }
+
+        return response()->json(['user' => $user, 'token' => $token]);
+    }
+
+    public function googleRedirect(Request $request)
+    {
+        $role = $request->input('role', 'customer');
+
+        // Check if Google Client ID is configured. If not, bypass to callback directly for mock/demo purposes.
+        if (!config('services.google.client_id')) {
+            $state = base64_encode(json_encode(['role' => $role, 'mock' => true]));
+            return redirect()->route('google.callback', [
+                'state' => $state,
+                'code' => 'mock-code',
+            ]);
+        }
+
+        $state = base64_encode(json_encode(['role' => $role]));
+
+        return Socialite::driver('google')
+            ->stateless()
+            ->with(['state' => $state])
+            ->redirect();
+    }
+
+    public function googleCallback(Request $request)
+    {
+        $stateData = [];
+        if ($request->has('state')) {
+            $stateData = json_decode(base64_decode($request->input('state')), true) ?? [];
+        }
+
+        $role = $stateData['role'] ?? 'customer';
+        $isMock = $stateData['mock'] ?? false;
+
+        $googleUser = null;
+        if ($isMock || !config('services.google.client_id')) {
+            $googleUser = new \Laravel\Socialite\Two\User();
+            $googleUser->map([
+                'id' => 'demo-google-' . Str::random(8),
+                'email' => 'demo.google@poultrylink.test',
+                'name' => 'Google Demo User',
+            ]);
+        } else {
+            try {
+                $googleUser = Socialite::driver('google')->stateless()->user();
+            } catch (\Exception $e) {
+                return redirect()->away("http://localhost:5173/login?error=" . urlencode('Google authentication failed: ' . $e->getMessage()));
+            }
+        }
+
+        if (!$googleUser || !$googleUser->getId()) {
+            return redirect()->away("http://localhost:5173/login?error=" . urlencode('Unable to retrieve Google user.'));
+        }
+
+        $googleId = $googleUser->getId();
+        $email = $googleUser->getEmail();
+        $fullname = $googleUser->getName() ?? 'Google User';
+
+        $user = User::where('google_id', $googleId)->first();
+
+        if (!$user && $email) {
+            $user = User::where('email', $email)->first();
+            if ($user) {
+                $user->update(['google_id' => $googleId]);
+            }
+        }
+
+        if (!$user) {
+            $frontendRegisterUrl = 'http://localhost:5173/register/google-complete';
+            return redirect()->away($frontendRegisterUrl . '?google_id=' . urlencode($googleId) . '&email=' . urlencode($email ?? '') . '&fullname=' . urlencode($fullname) . '&role=' . urlencode($role));
+        }
+
+        $token = $user->createToken('api-token')->plainTextToken;
+
+        ActivityLogService::log('User logged in via Google', $user->id);
+
+        if (in_array($user->role, ['seller', 'reseller'])) {
+            $user->load('farm');
+        }
+
+        $frontendUrl = 'http://localhost:5173/auth/callback';
+        return redirect()->away($frontendUrl . '?token=' . $token . '&user=' . urlencode(json_encode($user)));
+    }
+
+    public function googleRegister(Request $request)
+    {
+        $rules = [
+            'google_id' => ['required', 'string'],
+            'fullname' => ['required', 'string', 'max:255', 'regex:/^[\pL\s\.\'\-]+$/u'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'role' => ['required', 'in:customer,seller,reseller'],
+        ];
+
+        if ($request->input('role') === 'seller') {
+            $rules['business_name'] = ['required', 'string', 'max:255', 'unique:users,business_name'];
+            $rules['permit'] = ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'];
+            $rules['permit_issue_date'] = ['required', 'date'];
+            $rules['permit_expiry_date'] = ['required', 'date', 'after_or_equal:permit_issue_date'];
+        }
+
+        $validator = Validator::make($request->all(), $rules);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
+
+        if (User::where('google_id', $data['google_id'])->exists()) {
+            return response()->json(['message' => 'This Google account is already registered.'], 422);
+        }
+        if ($data['email'] && User::where('email', $data['email'])->exists()) {
+            return response()->json(['message' => 'This email address is already registered.'], 422);
+        }
+
+        $baseUsername = 'g' . substr(preg_replace('/[^a-z0-9]/', '', strtolower($data['google_id'])), 0, 12);
+        $username = $baseUsername;
+        $suffix = 1;
+
+        while (User::where('username', $username)->exists()) {
+            $username = $baseUsername . $suffix;
+            $suffix++;
+        }
+
+        $user = User::create([
+            'fullname' => $data['fullname'],
+            'username' => $username,
+            'email' => $data['email'],
+            'phone' => $data['phone'] ?? null,
+            'google_id' => $data['google_id'],
+            'role' => $data['role'],
+            'password' => null,
+            'status' => 'active',
+            'business_name' => $data['business_name'] ?? null,
+        ]);
+
+        if (in_array($user->role, ['seller', 'reseller'])) {
+            $permitPath = null;
+            if ($request->hasFile('permit')) {
+                $permitPath = $request->file('permit')->store('permits', 'public');
+            }
+
+            $issueDate = Carbon::parse($data['permit_issue_date']);
+            $expiryDate = Carbon::parse($data['permit_expiry_date']);
+
+            $farmStatus = $user->status === 'verified' ? 'approved' : 'pending';
+
+            if ($expiryDate->isPast()) {
+                $farmStatus = 'suspended';
+                $user->status = 'suspended';
+                $user->save();
+            }
+
+            \App\Models\Farm::create([
+                'user_id' => $user->id,
+                'name' => $data['business_name'] ?? ($user->fullname . ' Farm'),
+                'permit_status' => $farmStatus,
+                'permit_file' => $permitPath,
+                'permit_issue_date' => $issueDate->toDateString(),
+                'permit_expiry_date' => $expiryDate->toDateString(),
+                'location' => 'Roxas City, Capiz',
+                'description' => 'Newly registered local poultry farm.',
+                'rating' => 5.0,
+            ]);
+        }
+
+        $token = $user->createToken('api-token')->plainTextToken;
+
+        ActivityLogService::log('User registered via Google', $user->id);
 
         if (in_array($user->role, ['seller', 'reseller'])) {
             $user->load('farm');

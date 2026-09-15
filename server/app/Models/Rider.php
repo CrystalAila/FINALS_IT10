@@ -9,8 +9,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Rider extends Model
 {
     protected $fillable = [
-        'farm_id', 'fullname', 'phone', 'photo_path',
+        'user_id', 'farm_id', 'fullname', 'phone', 'photo_path',
     ];
+
+    /**
+     * Get the user account for this rider.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     /**
      * Get the farm that owns the rider.

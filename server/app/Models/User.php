@@ -62,4 +62,12 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Farm::class, 'favorite_farms');
     }
+
+    /**
+     * Get the rider profile if the user is a rider.
+     */
+    public function rider()
+    {
+        return $this->hasOne(Rider::class);
+    }
 }

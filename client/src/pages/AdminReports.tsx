@@ -27,7 +27,7 @@ const AdminReports: React.FC = () => {
   }, []);
 
   const formatPHP = (val: number) => {
-    return '₱' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return '₱' + Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   if (loading) {
@@ -59,7 +59,7 @@ const AdminReports: React.FC = () => {
   }
 
   // Calculate max revenue for chart rendering
-  const maxRevenue = Math.max(...(data.chart_data?.map((d: any) => d.revenue) || [1]));
+  const maxRevenue = Math.max(...(data.chart_data?.map((d: any) => Number(d.revenue) || 0) || [0]), 1);
 
   return (
     <AdminLayout>
@@ -161,7 +161,7 @@ const AdminReports: React.FC = () => {
                     return (
                       <div key={idx} className="group flex flex-col items-center flex-1">
                         <span className="mb-2 text-[10px] font-semibold text-emerald-800 opacity-0 group-hover:opacity-100 transition duration-200">
-                          ₱{d.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          ₱{Number(d.revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </span>
                         <div 
                           style={{ height: `${Math.max(heightPercent, 2)}%` }}

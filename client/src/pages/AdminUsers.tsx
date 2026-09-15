@@ -18,7 +18,7 @@ type User = {
   farm?: {
     name: string;
     location: string;
-    description: string;
+    description?: string | null;
     permit_file?: string | null;
     permit_status?: string | null;
     permit_issue_date?: string | null;
@@ -33,6 +33,8 @@ const AdminUsers = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [filterRole, setFilterRole] = useState<'all' | 'seller' | 'rider' | 'admin'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -54,7 +56,11 @@ const AdminUsers = () => {
   const handleViewDetails = async (userItem: User) => {
     setSelectedUser(userItem);
     setShowDetailsModal(true);
-    await logActivity(`Viewed details for user: ${userItem.username}`);
+    try {
+      await logActivity(`Viewed details for user: ${userItem.username}`);
+    } catch {
+      // Non-blocking
+    }
   };
 
   const getRoleLabelColor = (role: string) => {
@@ -70,6 +76,27 @@ const AdminUsers = () => {
         return 'bg-slate-100 text-slate-800 border-slate-200';
     }
   };
+
+  const filteredUsers = users.filter((u) => {
+    const matchesRole =
+      filterRole === 'all'
+        ? true
+        : filterRole === 'seller'
+        ? u.role === 'seller' || u.role === 'reseller'
+        : u.role === filterRole;
+
+    if (!matchesRole) return false;
+
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      u.fullname.toLowerCase().includes(term) ||
+      u.username.toLowerCase().includes(term) ||
+      (u.phone && u.phone.toLowerCase().includes(term)) ||
+      (u.email && u.email.toLowerCase().includes(term)) ||
+      (u.farm && u.farm.name && u.farm.name.toLowerCase().includes(term))
+    );
+  });
 
   return (
     <AdminLayout>
@@ -88,15 +115,46 @@ const AdminUsers = () => {
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-slate-500">System registry listing</p>
-              <h2 className="text-2xl font-semibold text-slate-900">Registered Users ({users.length})</h2>
+              <h2 className="text-2xl font-semibold text-slate-900">Registered Users ({filteredUsers.length})</h2>
             </div>
-            <button
-              onClick={fetchUsers}
-              disabled={loading}
-              className="rounded-2xl bg-emerald-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-900 disabled:opacity-60"
-            >
-              {loading ? 'Refreshing...' : 'Refresh listing'}
-            </button>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-500"
+              />
+              <button
+                onClick={fetchUsers}
+                disabled={loading}
+                className="rounded-2xl bg-emerald-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-900 disabled:opacity-60"
+              >
+                {loading ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
+          </div>
+
+          {/* Role Filter Tabs */}
+          <div className="mb-4 flex gap-2 flex-wrap">
+            {[
+              { id: 'all', label: 'All Users' },
+              { id: 'seller', label: 'Sellers' },
+              { id: 'rider', label: 'Riders' },
+              { id: 'admin', label: 'Admins' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setFilterRole(tab.id as any)}
+                className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                  filterRole === tab.id
+                    ? 'bg-emerald-950 text-white shadow-md'
+                    : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
           {error && (
@@ -118,35 +176,48 @@ const AdminUsers = () => {
                 </tr>
               </thead>
               <tbody>
-                {users.map((userItem) => (
-                  <tr key={userItem.id} className="border-b border-slate-100 hover:bg-slate-50 transition">
-                    <td className="py-3 px-4 font-medium text-slate-900">{userItem.fullname}</td>
-                    <td className="py-3 px-4 text-slate-600">{userItem.username}</td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-block rounded-2xl border px-3 py-1 text-xs font-semibold ${getRoleLabelColor(userItem.role)}`}>
-                        {userItem.role.charAt(0).toUpperCase() + userItem.role.slice(1)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-600">
-                      {userItem.created_at ? new Date(userItem.created_at).toLocaleDateString() : 'N/A'}
-                    </td>
-                    <td className="py-3 px-4">
-                      <button
-                        type="button"
-                        className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:border-slate-400"
-                        onClick={() => handleViewDetails(userItem)}
-                      >
-                        + View Details
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {users.length === 0 && (
+                {loading ? (
                   <tr>
-                    <td colSpan={5} className="py-8 px-4 text-center text-slate-600">
-                      {loading ? 'Loading system users…' : 'No users registered.'}
+                    <td colSpan={5} className="py-12 text-center text-slate-500">
+                      <span className="w-5 h-5 border-2 border-emerald-900 border-t-transparent rounded-full animate-spin inline-block mr-2 align-middle"></span>
+                      Loading registered users…
                     </td>
                   </tr>
+                ) : filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-slate-400 italic">
+                      No users found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((userItem) => (
+                    <tr key={userItem.id} className="border-b border-slate-100 hover:bg-slate-50 transition">
+                      <td className="py-3 px-4 font-medium text-slate-900">{userItem.fullname}</td>
+                      <td className="py-3 px-4">
+                        <span className="font-semibold text-slate-800">{userItem.username}</span>
+                        {userItem.phone && (
+                          <span className="block text-xs text-slate-400 font-normal">{userItem.phone}</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-block rounded-2xl border px-3 py-1 text-xs font-semibold ${getRoleLabelColor(userItem.role)}`}>
+                          {userItem.role.charAt(0).toUpperCase() + userItem.role.slice(1)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-600">
+                        {userItem.created_at ? new Date(userItem.created_at).toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td className="py-3 px-4">
+                        <button
+                          type="button"
+                          className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 hover:border-slate-400"
+                          onClick={() => handleViewDetails(userItem)}
+                        >
+                          + View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
@@ -239,10 +310,12 @@ const AdminUsers = () => {
                         <p className="text-slate-400 font-medium">Shop Location</p>
                         <p className="font-semibold text-slate-800">{selectedUser.farm.location}</p>
                       </div>
-                      <div className="col-span-2">
-                        <p className="text-slate-400 font-medium">Description</p>
-                        <p className="text-slate-600 text-xs italic">{selectedUser.farm.description || 'No description provided'}</p>
-                      </div>
+                      {selectedUser.farm.description && (
+                        <div className="col-span-2">
+                          <p className="text-slate-400 font-medium">Description</p>
+                          <p className="text-slate-600 text-xs italic">{selectedUser.farm.description}</p>
+                        </div>
+                      )}
                       {selectedUser.farm.permit_issue_date && (
                         <div>
                           <p className="text-slate-400 font-medium">Permit Issued</p>
@@ -294,6 +367,12 @@ const AdminUsers = () => {
                         {selectedUser.farm?.name || 'Independent Rider'}
                       </p>
                     </div>
+                    {selectedUser.farm?.location && (
+                      <div className="col-span-2">
+                        <p className="text-slate-400 font-medium">Farm Location</p>
+                        <p className="font-semibold text-slate-800">{selectedUser.farm.location}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

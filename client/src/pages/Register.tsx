@@ -140,7 +140,7 @@ const Register: React.FC = () => {
         </div>
       </div>
 
-      <GoogleLoginButton onSuccess={handleGoogleSuccess} onError={setError} disabled={loading} />
+      <GoogleLoginButton role="customer" disabled={loading} text="Sign in with Google" />
     </AuthLayout>
   );
 };

@@ -80,7 +80,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const saveAddress = useCallback((address: DeliveryAddress) => setSavedAddress(address), []);
 
-  const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items]);
+  const itemCount = useMemo(() => new Set(items.map((i) => i.productId)).size, [items]);
   const subtotal = useMemo(
     () => items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0),
     [items],

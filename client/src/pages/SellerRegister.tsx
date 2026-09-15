@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AuthLayout from '../components/customer/AuthLayout';
+import GoogleLoginButton from '../components/customer/GoogleLoginButton';
 
 const SellerRegister: React.FC = () => {
   const [fullname, setFullname] = useState('');
@@ -224,6 +225,17 @@ const SellerRegister: React.FC = () => {
           {loading ? 'Registering seller...' : 'Register as Seller'}
         </button>
       </form>
+
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-200" />
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="bg-white px-3 text-gray-500">or</span>
+        </div>
+      </div>
+
+      <GoogleLoginButton role="seller" disabled={loading} text="Sign in with Google" />
     </AuthLayout>
   );
 };

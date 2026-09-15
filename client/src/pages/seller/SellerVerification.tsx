@@ -197,17 +197,24 @@ const SellerVerification: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button
+              onClick={() => navigate('/seller/dashboard')}
+              className="flex-1 flex items-center justify-center gap-2 rounded-full border border-brand text-brand hover:bg-brand/5 py-3 px-4 font-bold transition"
+            >
+              Back to Dashboard
+            </button>
+
+            <button
               onClick={handleRefresh}
               disabled={refreshing}
               className="flex-1 flex items-center justify-center gap-2 rounded-full bg-brand py-3 px-4 font-bold text-white shadow-lg shadow-brand/20 hover:bg-brand-dark transition disabled:opacity-60"
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'Refreshing...' : 'Refresh Verification Status'}
+              {refreshing ? 'Refreshing...' : 'Refresh Status'}
             </button>
             
             <button
               onClick={handleLogout}
-              className="flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white hover:bg-slate-50 py-3 px-6 font-bold text-slate-700 transition"
+              className="flex-1 flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white hover:bg-slate-50 py-3 px-6 font-bold text-slate-700 transition"
             >
               <LogOut className="h-4 w-4" />
               Sign Out
