@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import GoogleLoginButton from '../components/customer/GoogleLoginButton';
 
@@ -98,8 +97,13 @@ const SellerLogin: React.FC = () => {
 
   return (
     <div className="flex min-h-screen w-full flex-col lg:flex-row bg-[#FAF9F6]">
-      {/* LEFT SIDE: Deep Forest Cypress Green with Handcrafted Depth & Local Panay Context */}
-      <div className="relative hidden lg:flex lg:w-1/2 flex-col justify-between overflow-hidden bg-[#0F281E] p-12 lg:p-16 text-white select-none">
+      {/* LEFT SIDE: Green Gradient with Handcrafted Depth & Local Panay Context */}
+      <div
+        className="relative hidden lg:flex lg:w-1/2 flex-col justify-between overflow-hidden p-12 lg:p-16 text-white select-none"
+        style={{
+          background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)',
+        }}
+      >
         {/* Subtle Organic Farm Topography Pattern Overlay */}
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.04] mix-blend-screen"
@@ -113,10 +117,6 @@ const SellerLogin: React.FC = () => {
           </defs>
           <rect width="100%" height="100%" fill="url(#farm-grid)" />
         </svg>
-
-        {/* Soft atmospheric ambient light layers */}
-        <div className="pointer-events-none absolute -left-24 -top-24 h-[450px] w-[450px] rounded-full bg-[#1F4D36]/40 blur-[90px]" />
-        <div className="pointer-events-none absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full bg-[#2A6145]/25 blur-[100px]" />
 
         {/* Top Header: PoultryLink Logo & Brand */}
         <div className="relative z-10 flex items-center gap-3.5">
@@ -270,10 +270,10 @@ const SellerLogin: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword((p) => !p)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition focus:outline-none"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-stone-500 hover:text-stone-700 transition focus:outline-none"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
             </div>

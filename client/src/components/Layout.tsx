@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
 import api from '../lib/axios';
+import { SearchIcon } from './common/SearchIcon';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout, logActivity } = useAuth();
@@ -67,126 +68,133 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="flex min-h-screen">
-        <aside className={`${isAdmin ? 'w-72 border-r border-emerald-900 bg-emerald-950 text-emerald-100' : 'w-72 border-r border-slate-200 bg-white text-slate-900'} px-5 py-6 shadow-sm`}>
-          <div className="mb-10 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-brand/10 text-brand text-2xl">🐓</div>
-            <div>
-              <p className="text-lg font-semibold">Poultry Link</p>
-              <p className="text-sm text-slate-500">Modern ag marketplace</p>
+        <aside
+          className="w-72 border-r border-emerald-900/30 text-white px-5 py-6 shadow-sm flex flex-col justify-between"
+          style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
+        >
+          <div>
+            <div className="mb-10 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/20 text-white font-bold text-base tracking-wider">PL</div>
+              <div>
+                <p className="text-lg font-semibold text-white">Poultry Link</p>
+                <p className="text-sm text-emerald-100">Modern ag marketplace</p>
+              </div>
             </div>
-          </div>
 
-          <nav className="space-y-1">
-            <Link
-              to={dashboardPath}
-              className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive(dashboardPath) ? (isAdmin ? 'bg-emerald-800 text-white shadow-sm' : 'bg-brand/10 text-brand shadow-sm') : (isAdmin ? 'text-emerald-100 hover:bg-emerald-900' : 'text-slate-700 hover:bg-slate-100')}`}
-            >
-              Dashboard
-            </Link>
-            {(user?.role === 'seller' || user?.role === 'reseller') && (
-              <>
-                {user.status !== 'verified' && (
+            <nav className="space-y-1">
+              <Link
+                to={dashboardPath}
+                className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive(dashboardPath) ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+              >
+                Dashboard
+              </Link>
+              {(user?.role === 'seller' || user?.role === 'reseller') && (
+                <>
+                  {user.status !== 'verified' && (
+                    <Link
+                      to="/seller/verification"
+                      className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/verification') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+                    >
+                      Account Verification
+                    </Link>
+                  )}
                   <Link
-                    to="/seller/verification"
-                    className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/verification') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
+                    to="/seller/shop"
+                    className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/shop') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
                   >
-                    Account Verification
+                    Shop Configuration
                   </Link>
-                )}
-                <Link
-                  to="/seller/shop"
-                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/shop') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
-                >
-                  Shop Configuration
-                </Link>
-                {user.status === 'verified' && (
-                  <>
-                    <Link
-                      to="/seller/listings"
-                      className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/listings') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
-                    >
-                      My Listings
-                    </Link>
-                    <Link
-                      to="/seller/orders"
-                      onClick={() => setHasNewOrderNotification(false)}
-                      className={`relative flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/orders') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
-                    >
-                      <span>Orders</span>
-                      {hasNewOrderNotification && (
-                        <span className="h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
-                      )}
-                    </Link>
-                    <Link
-                      to="/seller/riders"
-                      className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/riders') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
-                    >
-                      Rider Registry
-                    </Link>
-                    <Link
-                      to="/seller/sales-report"
-                      className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/sales-report') ? 'bg-brand/10 text-brand shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
-                    >
-                      Sales Report
-                    </Link>
-                  </>
-                )}
-              </>
-            )}
-            {isAdmin && (
-              <>
-                <Link
-                  to="/admin/users"
-                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/users') ? 'bg-emerald-800 text-white shadow-sm' : 'text-emerald-100 hover:bg-emerald-900'}`}
-                >
-                  User Management
-                </Link>
-                <Link
-                  to="/admin/permits"
-                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/permits') ? 'bg-emerald-800 text-white shadow-sm' : 'text-emerald-100 hover:bg-emerald-900'}`}
-                >
-                  Permits Verifications
-                </Link>
-                <Link
-                  to="/admin/market"
-                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/market') ? 'bg-emerald-800 text-white shadow-sm' : 'text-emerald-100 hover:bg-emerald-900'}`}
-                >
-                  Market Monitoring
-                </Link>
-                <Link
-                  to="/admin/reports"
-                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/reports') ? 'bg-emerald-800 text-white shadow-sm' : 'text-emerald-100 hover:bg-emerald-900'}`}
-                >
-                  Reports
-                </Link>
-                <Link
-                  to="/admin/logs"
-                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/logs') ? 'bg-emerald-800 text-white shadow-sm' : 'text-emerald-100 hover:bg-emerald-900'}`}
-                >
-                  Audit Logs
-                </Link>
-                <Link
-                  to="/admin/settings"
-                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/settings') ? 'bg-emerald-800 text-white shadow-sm' : 'text-emerald-100 hover:bg-emerald-900'}`}
-                >
-                  System Settings
-                </Link>
-              </>
-            )}
-          </nav>
-
-          <div className="mt-10 rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
-            <p className="font-semibold text-slate-900">Current role</p>
-            <p className="mt-1 capitalize">{user?.role}</p>
+                  {user.status === 'verified' && (
+                    <>
+                      <Link
+                        to="/seller/listings"
+                        className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/listings') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+                      >
+                        My Listings
+                      </Link>
+                      <Link
+                        to="/seller/orders"
+                        onClick={() => setHasNewOrderNotification(false)}
+                        className={`relative flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/orders') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+                      >
+                        <span>Orders</span>
+                        {hasNewOrderNotification && (
+                          <span className="h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
+                        )}
+                      </Link>
+                      <Link
+                        to="/seller/riders"
+                        className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/riders') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+                      >
+                        Rider Registry
+                      </Link>
+                      <Link
+                        to="/seller/sales-report"
+                        className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/sales-report') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+                      >
+                        Sales Report
+                      </Link>
+                    </>
+                  )}
+                </>
+              )}
+              {isAdmin && (
+                <>
+                  <Link
+                    to="/admin/users"
+                    className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/users') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+                  >
+                    User Management
+                  </Link>
+                  <Link
+                    to="/admin/permits"
+                    className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/permits') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+                  >
+                    Permits Verifications
+                  </Link>
+                  <Link
+                    to="/admin/market"
+                    className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/market') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+                  >
+                    Market Monitoring
+                  </Link>
+                  <Link
+                    to="/admin/reports"
+                    className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/reports') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+                  >
+                    Reports
+                  </Link>
+                  <Link
+                    to="/admin/logs"
+                    className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/logs') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+                  >
+                    Audit Logs
+                  </Link>
+                  <Link
+                    to="/admin/settings"
+                    className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/settings') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+                  >
+                    System Settings
+                  </Link>
+                </>
+              )}
+            </nav>
           </div>
 
-          <button
-            type="button"
-            onClick={() => logout()}
-            className="mt-6 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            Logout
-          </button>
+          <div className="mt-8">
+            <div className="rounded-3xl bg-white/15 p-4 text-sm text-white">
+              <p className="font-semibold text-white/90">Current role</p>
+              <p className="mt-1 capitalize text-emerald-100">{user?.role}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="mt-4 w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
+            >
+              Logout
+            </button>
+          </div>
         </aside>
 
         <div className="flex-1 px-6 py-6">
@@ -201,13 +209,15 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 placeholder="Search seller tools"
                 onChange={() => {}}
               />
-              <span className="text-slate-400">🔎</span>
+              <SearchIcon className="h-4 w-4 text-slate-400" />
             </div>
             <div className="flex items-center gap-3 text-slate-600">
               <span className="hidden rounded-full bg-brand/10 px-3 py-1 text-sm font-semibold text-brand sm:inline-flex">
                 {(user?.role === 'seller' || user?.role === 'reseller') ? (user?.role === 'seller' ? 'Seller' : 'Reseller') : user?.role}
               </span>
-              <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-brand/10 text-brand text-lg">🐓</div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-brand font-bold text-sm uppercase">
+                {user?.fullname ? user.fullname.charAt(0) : 'U'}
+              </div>
             </div>
           </header>
 

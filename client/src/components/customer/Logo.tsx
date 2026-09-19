@@ -16,11 +16,11 @@ export default function Logo({ size = 'md', light = false }: LogoProps) {
   return (
     <Link to="/customer" className="flex items-center gap-2.5">
       <span
-        className={`${s.icon} flex h-10 w-10 items-center justify-center rounded-xl ${
-          light ? 'bg-white/15' : 'bg-brand/10'
+        className={`text-sm font-black flex h-10 w-10 items-center justify-center rounded-xl ${
+          light ? 'bg-white/15 text-white' : 'bg-brand/10 text-brand'
         }`}
       >
-        🐔
+        PL
       </span>
       <span className={`${s.text} font-bold tracking-tight ${light ? 'text-white' : 'text-gray-900'}`}>
         Poultry<span className="text-brand">Link</span>

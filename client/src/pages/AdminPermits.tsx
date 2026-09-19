@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../lib/axios';
+import SearchIcon from '../components/common/SearchIcon';
 
 interface PermitRequest {
   id: number;
@@ -21,6 +22,7 @@ const AdminPermits: React.FC = () => {
   const [showDocumentPreview, setShowDocumentPreview] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pending' | 'under_review' | 'approved' | 'rejected' | 'suspended'>('all');
   const [actionMessage, setActionMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchPermits();
@@ -165,17 +167,26 @@ const AdminPermits: React.FC = () => {
     documentsMissing: 0,
   };
 
+  const filteredPermits = permits.filter((permit) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    const matchesSeller = permit.seller_name.toLowerCase().includes(term);
+    const matchesStatus = permit.status.toLowerCase().includes(term);
+    const matchesDocs = permit.documents?.some((doc) => doc.toLowerCase().includes(term));
+    return matchesSeller || matchesStatus || matchesDocs;
+  });
+
   return (
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="rounded-3xl border border-emerald-900 bg-emerald-950 p-6 text-emerald-100 shadow-sm">
-          <p className="text-sm uppercase tracking-[0.2em] text-emerald-300">Permit Verifications</p>
-          <h1 className="mt-3 text-3xl font-semibold">Review pending seller permits</h1>
-          <p className="mt-2 max-w-2xl text-slate-300">
-            Approve or reject seller permit documents, verify business compliance, and update seller account status with confidence.
-          </p>
-          <div className="mt-3 rounded-lg bg-emerald-900/50 px-3 py-2 text-xs text-emerald-200 border border-emerald-700">
+        <div
+          className="rounded-3xl p-6 text-white shadow-sm"
+          style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
+        >
+          <p className="text-sm uppercase tracking-[0.2em] text-emerald-100 font-semibold">Permit Verifications</p>
+          <h1 className="mt-2 text-3xl font-semibold">Review pending seller permits</h1>
+          <div className="mt-3 rounded-xl bg-white/15 px-3.5 py-2 text-xs text-white border border-white/20 inline-block">
             <strong>Requirement:</strong> Only business permits are required for seller verification on PoultryLink.
           </div>
         </div>
@@ -201,7 +212,7 @@ const AdminPermits: React.FC = () => {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-500">Under Review</p>
-                <h2 className="mt-2 text-3xl font-semibold text-orange-600">{stats.underReview}</h2>
+                <h2 className="mt-2 text-3xl font-semibold text-[#D96B27]">{stats.underReview}</h2>
               </div>
             </div>
           </div>
@@ -242,17 +253,31 @@ const AdminPermits: React.FC = () => {
 
         {/* Permits List */}
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-slate-500">Seller permit queue</p>
               <h2 className="text-2xl font-semibold text-slate-900">Manage permits</h2>
             </div>
-            <button
-              onClick={() => fetchPermits()}
-              className="rounded-2xl bg-emerald-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-900"
-            >
-              Refresh queue
-            </button>
+            <div className="flex gap-2 flex-wrap items-center">
+              <div className="relative flex items-center min-w-[240px]">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <SearchIcon className="h-4 w-4 text-slate-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search permits by seller or status..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-500"
+                />
+              </div>
+              <button
+                onClick={() => fetchPermits()}
+                className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -263,7 +288,7 @@ const AdminPermits: React.FC = () => {
               </div>
             ) : (
               <>
-                {permits.map((permit) => (
+                {filteredPermits.map((permit) => (
                   <div key={permit.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-5 hover:shadow-md transition">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex-1">
@@ -289,7 +314,7 @@ const AdminPermits: React.FC = () => {
                       <div className="grid gap-2 sm:grid-cols-3">
                         {permit.documents.map((doc, idx) => (
                           <div key={idx} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-sm text-slate-700">
-                            📄 {doc}
+                            {doc}
                           </div>
                         ))}
                       </div>
@@ -335,21 +360,21 @@ const AdminPermits: React.FC = () => {
                       <div className="mt-4 flex flex-wrap gap-2">
                         <button
                           onClick={() => handleUnderReview(permit.id)}
-                          className="rounded-2xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-700"
+                          className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150"
                         >
-                          👁 Set Under Review
+                          Set Under Review
                         </button>
                         <button
                           onClick={() => handleApprove(permit.id)}
-                          className="rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+                          className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                         >
-                          ✓ Approve
+                          Approve
                         </button>
                         <button
                           onClick={() => handleReject(permit.id)}
                           className="rounded-2xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
                         >
-                          ✕ Reject
+                          Reject
                         </button>
                       </div>
                     )}
@@ -358,27 +383,27 @@ const AdminPermits: React.FC = () => {
                       <div className="mt-4 flex flex-wrap gap-2">
                         <button
                           onClick={() => handleApprove(permit.id)}
-                          className="rounded-2xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+                          className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                         >
-                          ✓ Approve
+                          Approve
                         </button>
                         <button
                           onClick={() => handleRequestRevision(permit.id)}
-                          className="rounded-2xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700"
+                          className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150"
                         >
-                          ↻ Request Revision
+                          Request Revision
                         </button>
                         <button
                           onClick={() => handleReject(permit.id)}
                           className="rounded-2xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
                         >
-                          ✕ Reject
+                          Reject
                         </button>
                         <button
                           onClick={() => handleSuspend(permit.id)}
                           className="rounded-2xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
                         >
-                          🚫 Suspend Account
+                          Suspend Account
                         </button>
                       </div>
                     )}
@@ -390,15 +415,15 @@ const AdminPermits: React.FC = () => {
                             onClick={() => handleSuspend(permit.id)}
                             className="rounded-2xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
                           >
-                            🚫 Suspend Account
+                            Suspend Account
                           </button>
                         )}
                         {permit.status === 'Suspended' && (
                           <button
                             onClick={() => handleUnderReview(permit.id)}
-                            className="rounded-2xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-700"
+                            className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150"
                           >
-                            👁 Reset to Under Review
+                            Reset to Under Review
                           </button>
                         )}
                       </div>
@@ -406,9 +431,9 @@ const AdminPermits: React.FC = () => {
                   </div>
                 ))}
 
-                {permits.length === 0 && (
+                {filteredPermits.length === 0 && (
                   <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-                    <p className="text-sm text-slate-600">No permits found for this filter.</p>
+                    <p className="text-sm text-slate-600">No permits found matching criteria.</p>
                   </div>
                 )}
               </>
@@ -493,18 +518,18 @@ const AdminPermits: React.FC = () => {
                         handleUnderReview(selectedPermit.id);
                         setShowDocumentPreview(false);
                       }}
-                      className="rounded-2xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-700"
+                      className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150"
                     >
-                      👁 Set Under Review
+                      Set Under Review
                     </button>
                     <button
                       onClick={() => {
                         handleApprove(selectedPermit.id);
                         setShowDocumentPreview(false);
                       }}
-                      className="rounded-2xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700"
+                      className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                     >
-                      ✓ Approve
+                      Approve
                     </button>
                     <button
                       onClick={() => {
@@ -513,7 +538,7 @@ const AdminPermits: React.FC = () => {
                       }}
                       className="rounded-2xl border border-red-300 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100"
                     >
-                      ✕ Reject
+                      Reject
                     </button>
                   </>
                 )}
@@ -525,18 +550,18 @@ const AdminPermits: React.FC = () => {
                         handleApprove(selectedPermit.id);
                         setShowDocumentPreview(false);
                       }}
-                      className="rounded-2xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700"
+                      className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                     >
-                      ✓ Approve
+                      Approve
                     </button>
                     <button
                       onClick={() => {
                         handleRequestRevision(selectedPermit.id);
                         setShowDocumentPreview(false);
                       }}
-                      className="rounded-2xl bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700"
+                      className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150"
                     >
-                      ↻ Request Revision
+                      Request Revision
                     </button>
                     <button
                       onClick={() => {
@@ -545,7 +570,7 @@ const AdminPermits: React.FC = () => {
                       }}
                       className="rounded-2xl border border-red-300 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100"
                     >
-                      ✕ Reject
+                      Reject
                     </button>
                   </>
                 )}
@@ -560,7 +585,7 @@ const AdminPermits: React.FC = () => {
                         }}
                         className="rounded-2xl border border-slate-300 bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
                       >
-                        🚫 Suspend Account
+                        Suspend Account
                       </button>
                     )}
                     {selectedPermit.status === 'Suspended' && (
@@ -569,9 +594,9 @@ const AdminPermits: React.FC = () => {
                           handleUnderReview(selectedPermit.id);
                           setShowDocumentPreview(false);
                         }}
-                        className="rounded-2xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-700"
+                        className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150"
                       >
-                        👁 Set Under Review
+                        Set Under Review
                       </button>
                     )}
                   </>

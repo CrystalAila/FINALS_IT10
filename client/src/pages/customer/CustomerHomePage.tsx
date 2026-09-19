@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../../lib/axios';
 import ProductCard from '../../components/customer/ProductCard';
 import type { Product } from '../../types/marketplace';
+import { SearchIcon } from '../../components/common/SearchIcon';
 
 export default function CustomerHomePage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -56,7 +57,10 @@ export default function CustomerHomePage() {
   return (
     <div className="space-y-8">
       {/* Hero Banner */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-customer-dark to-green-700 text-white shadow-card">
+      <section
+        className="relative overflow-hidden rounded-3xl text-white shadow-card"
+        style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
+      >
         <div className="grid items-center gap-6 p-8 md:grid-cols-2 md:p-12">
           <div className="space-y-4">
             <span className="inline-block rounded-full bg-white/15 px-4 py-1 text-sm font-medium">
@@ -85,7 +89,7 @@ export default function CustomerHomePage() {
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search bar */}
           <div className="flex-1 flex gap-2 items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <span className="text-slate-400">🔎</span>
+            <SearchIcon className="h-4 w-4 text-slate-400 flex-shrink-0" />
             <input
               type="text"
               placeholder="Search products, categories, or shops..."
@@ -106,7 +110,7 @@ export default function CustomerHomePage() {
                   : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
               }`}
             >
-              <span>♥</span> Favorited Shops
+              Favorited Shops
             </button>
 
             {/* Clear Filters */}

@@ -1,4 +1,3 @@
-import { Star, CheckCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { Product } from '../../types/marketplace';
 import { displayRating, formatPrice, priceRange } from '../../types/marketplace';
@@ -41,10 +40,14 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div className="flex items-center gap-1">
           <button
             onClick={handleFarmClick}
-            className="text-sm text-gray-500 hover:text-brand transition hover:underline text-left font-medium flex items-center gap-1"
+            className="text-sm text-gray-500 hover:text-brand transition hover:underline text-left font-medium flex items-center gap-1.5"
           >
             {farmName}
-            {isVerified && <CheckCircle className="h-3.5 w-3.5 fill-emerald-500 text-white" />}
+            {isVerified && (
+              <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                Verified
+              </span>
+            )}
           </button>
         </div>
         {product.farm_origin && (
@@ -54,9 +57,8 @@ export default function ProductCard({ product }: ProductCardProps) {
         )}
         <div className="mt-auto flex items-center justify-between">
           <span className="font-bold text-brand">{priceRange(product)}</span>
-          <span className="flex items-center gap-1 text-sm text-gray-600">
-            <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-            {rating}
+          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+            Rating: {rating}
           </span>
         </div>
         <p className="text-xs text-gray-400">From {formatPrice(Number(product.price_medium))}</p>

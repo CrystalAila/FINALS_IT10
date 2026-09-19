@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\RiderController;
 use App\Http\Controllers\Api\FarmController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\RiderOrderController;
+use App\Http\Controllers\Api\AdminShareController;
+use App\Http\Controllers\Api\SettingController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -22,6 +24,7 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::get('/system/status', [SettingController::class, 'status']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -68,6 +71,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/seller/farm', [FarmController::class, 'show']);
         Route::post('/seller/farm', [FarmController::class, 'update']);
         Route::get('/seller/sales-report', [OrderController::class, 'salesReport']);
+        Route::get('/seller/dashboard-stats', [OrderController::class, 'dashboardStats']);
     });
 
     // Rider Routes
@@ -90,6 +94,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/admin/reports/summary', [UserController::class, 'getReportsSummary']);
         Route::get('/admin/products', [UserController::class, 'getAdminProducts']);
         Route::put('/admin/products/{id}/toggle-flag', [UserController::class, 'toggleProductFlag']);
+        Route::get('/admin/market/sellers', [UserController::class, 'getMarketSellers']);
 
         // Permit Verification Routes
         Route::get('/admin/permits', [UserController::class, 'getPermits']);
@@ -98,5 +103,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/admin/permits/{id}/request-revision', [UserController::class, 'requestRevisionPermit']);
         Route::put('/admin/permits/{id}/suspend', [UserController::class, 'suspendSeller']);
         Route::put('/admin/permits/{id}/under-review', [UserController::class, 'underReviewPermit']);
+
+        // Admin Shares (5% Platform Fee)
+        Route::get('/admin/shares', [AdminShareController::class, 'index']);
+        Route::put('/admin/shares/{id}/mark-paid', [AdminShareController::class, 'markPaid']);
+        Route::post('/admin/shares/sync', [AdminShareController::class, 'sync']);
+
+        // System Settings
+        Route::get('/admin/settings', [SettingController::class, 'index']);
+        Route::put('/admin/settings', [SettingController::class, 'update']);
+        Route::post('/admin/settings/reset', [SettingController::class, 'reset']);
     });
 });

@@ -19,6 +19,7 @@ import AdminPermits from './pages/AdminPermits';
 import AdminMarket from './pages/AdminMarket';
 import AdminReports from './pages/AdminReports';
 import AdminSettings from './pages/AdminSettings';
+import AdminShares from './pages/AdminShares';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
@@ -137,6 +138,14 @@ const AppRouter: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <AdminReports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/shares"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminShares />
             </ProtectedRoute>
           }
         />

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 // Chicken in Cart Brand Logo SVG
@@ -106,10 +105,12 @@ const Login: React.FC = () => {
   return (
     <div className="flex min-h-screen w-full flex-col lg:flex-row bg-white">
       {/* LEFT SIDE: Green Gradient with Large Logo & Tagline */}
-      <div className="relative hidden lg:flex lg:w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-emerald-800 via-green-800 to-emerald-950 p-12 text-white">
-        {/* Subtle Ambient Decorative Glows */}
-        <div className="pointer-events-none absolute -left-20 -top-20 h-96 w-96 rounded-full bg-emerald-500/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-green-400/20 blur-3xl" />
+      <div
+        className="relative hidden lg:flex lg:w-1/2 flex-col justify-between overflow-hidden p-12 text-white"
+        style={{
+          background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)',
+        }}
+      >
 
         {/* Top Mini Brand Bar */}
         <div className="relative z-10 flex items-center gap-3">
@@ -222,10 +223,10 @@ const Login: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword((p) => !p)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500 hover:text-gray-700 focus:outline-none"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
             </div>
@@ -250,11 +251,10 @@ const Login: React.FC = () => {
               </Link>
             </div>
 
-            {/* Gray Sign In Button per Figma */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-gray-800 hover:bg-gray-900 py-3.5 text-sm font-semibold text-white shadow-md shadow-gray-900/10 transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
@@ -270,15 +270,14 @@ const Login: React.FC = () => {
             </div>
           </div>
 
-          {/* Social Login Icons (Google, Facebook, LinkedIn) */}
-          <div className="grid grid-cols-3 gap-3">
-            {/* Google */}
+          {/* Social Login: Google */}
+          <div>
             <button
               type="button"
               onClick={handleGoogleRedirect}
               disabled={loading}
               title="Sign in with Google"
-              className="flex items-center justify-center rounded-xl border border-gray-300 bg-white py-2.5 shadow-sm transition hover:bg-gray-50 hover:border-gray-400 focus:outline-none disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white py-3 px-4 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 hover:border-gray-400 focus:outline-none disabled:opacity-60"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
@@ -286,32 +285,7 @@ const Login: React.FC = () => {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
-            </button>
-
-            {/* Facebook */}
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => setError('Facebook login is currently available via registered email.')}
-              title="Sign in with Facebook"
-              className="flex items-center justify-center rounded-xl border border-gray-300 bg-white py-2.5 shadow-sm transition hover:bg-gray-50 hover:border-gray-400 focus:outline-none disabled:opacity-60"
-            >
-              <svg className="h-5 w-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-              </svg>
-            </button>
-
-            {/* LinkedIn */}
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => setError('LinkedIn login is currently available via registered email.')}
-              title="Sign in with LinkedIn"
-              className="flex items-center justify-center rounded-xl border border-gray-300 bg-white py-2.5 shadow-sm transition hover:bg-gray-50 hover:border-gray-400 focus:outline-none disabled:opacity-60"
-            >
-              <svg className="h-5 w-5 text-[#0A66C2]" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
-              </svg>
+              <span>Continue with Google</span>
             </button>
           </div>
 

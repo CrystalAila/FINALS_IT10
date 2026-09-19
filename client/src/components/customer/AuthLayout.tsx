@@ -11,7 +11,12 @@ type AuthLayoutProps = {
 export default function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
   return (
     <div className="flex min-h-screen">
-      <div className="hidden w-1/2 flex-col justify-between bg-login-green p-12 text-white lg:flex">
+      <div
+        className="hidden w-1/2 flex-col justify-between p-12 text-white lg:flex"
+        style={{
+          background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)',
+        }}
+      >
         <Logo light size="lg" />
         <div className="space-y-4">
           <h1 className="text-4xl font-bold leading-tight">

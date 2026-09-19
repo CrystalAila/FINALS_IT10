@@ -315,39 +315,53 @@ class OrderController extends Controller
         $farm = $user->farm;
 
         if (!$farm) {
-            return response()->json(['message' => 'Farm not configured.'], 403);
+            return response()->json([
+                'summary' => [
+                    'total_revenue' => 0,
+                    'orders_completed' => 0,
+                    'items_sold' => 0,
+                ],
+                'categories' => [
+                    ['category' => 'broiler', 'revenue' => 0],
+                    ['category' => 'native', 'revenue' => 0],
+                    ['category' => 'eggs', 'revenue' => 0],
+                    ['category' => 'dressed_chicken', 'revenue' => 0],
+                ],
+                'top_products' => [],
+                'recent_transactions' => [],
+            ]);
         }
 
-        // Get completed orders
+        // Get completed orders for the authenticated seller's farm only
         $completedOrders = Order::with(['items.product', 'customer'])
             ->where('farm_id', $farm->id)
             ->where('status', 'completed')
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $totalRevenue = $completedOrders->sum('total');
+        $totalRevenue = (float) $completedOrders->sum('total');
         $ordersCount = $completedOrders->count();
         
         $totalItemsSold = 0;
         $categoryBreakdown = [
-            'broiler' => 0,
-            'native' => 0,
-            'eggs' => 0,
-            'dressed_chicken' => 0,
+            'broiler' => 0.0,
+            'native' => 0.0,
+            'eggs' => 0.0,
+            'dressed_chicken' => 0.0,
         ];
         
         $productSales = [];
 
         foreach ($completedOrders as $order) {
             foreach ($order->items as $item) {
-                $totalItemsSold += $item->quantity;
+                $totalItemsSold += (int) $item->quantity;
                 $product = $item->product;
                 if ($product) {
                     $cat = $product->category;
                     if (array_key_exists($cat, $categoryBreakdown)) {
-                        $categoryBreakdown[$cat] += $item->subtotal;
+                        $categoryBreakdown[$cat] += (float) $item->subtotal;
                     } else {
-                        $categoryBreakdown[$cat] = $item->subtotal;
+                        $categoryBreakdown[$cat] = (float) $item->subtotal;
                     }
 
                     if (!isset($productSales[$product->id])) {
@@ -357,25 +371,25 @@ class OrderController extends Controller
                             'image' => $product->image,
                             'category' => $product->category,
                             'qty_sold' => 0,
-                            'revenue' => 0,
+                            'revenue' => 0.0,
                         ];
                     }
-                    $productSales[$product->id]['qty_sold'] += $item->quantity;
-                    $productSales[$product->id]['revenue'] += $item->subtotal;
+                    $productSales[$product->id]['qty_sold'] += (int) $item->quantity;
+                    $productSales[$product->id]['revenue'] += (float) $item->subtotal;
                 }
             }
         }
 
         // Sort products by revenue descending
         usort($productSales, fn($a, $b) => $b['revenue'] <=> $a['revenue']);
-        $topProducts = array_slice($productSales, 0, 5);
+        $topProducts = array_values(array_slice($productSales, 0, 5));
 
         // Format category breakdown to be list of objects
         $categoryData = [];
         foreach ($categoryBreakdown as $cat => $rev) {
             $categoryData[] = [
                 'category' => $cat,
-                'revenue' => $rev,
+                'revenue' => (float) $rev,
             ];
         }
 
@@ -383,12 +397,12 @@ class OrderController extends Controller
         $recentTransactions = $completedOrders->take(10)->map(function ($order) {
             return [
                 'id' => $order->id,
-                'customer_name' => $order->customer ? $order->customer->fullname : 'Walk-in Customer',
-                'items_count' => $order->items->sum('quantity'),
-                'total' => $order->total,
-                'date' => $order->created_at->toDateString(),
+                'customer_name' => $order->customer ? ($order->customer->fullname ?: $order->customer->username) : 'Walk-in Customer',
+                'items_count' => (int) $order->items->sum('quantity'),
+                'total' => (float) $order->total,
+                'date' => $order->created_at ? $order->created_at->toDateString() : '',
             ];
-        });
+        })->values();
 
         return response()->json([
             'summary' => [
@@ -399,6 +413,89 @@ class OrderController extends Controller
             'categories' => $categoryData,
             'top_products' => $topProducts,
             'recent_transactions' => $recentTransactions,
+        ]);
+    }
+
+    /**
+     * Get live dashboard statistics for the authenticated seller.
+     */
+    public function dashboardStats(Request $request)
+    {
+        $user = $request->user();
+        $farm = $user->farm;
+
+        if (!$farm) {
+            return response()->json([
+                'stats' => [
+                    'total_sales' => 0,
+                    'pending_orders' => 0,
+                    'low_stock_count' => 0,
+                    'new_customers' => 0,
+                    'orders_fulfilled' => 0,
+                    'stock_health' => [],
+                ]
+            ]);
+        }
+
+        // 1. Total Sales from completed orders
+        $totalSales = (float) Order::where('farm_id', $farm->id)
+            ->where('status', 'completed')
+            ->sum('total');
+
+        // 2. Pending Orders
+        $pendingOrders = Order::where('farm_id', $farm->id)
+            ->where('status', 'pending')
+            ->count();
+
+        // 3. Orders Fulfilled (completed orders)
+        $ordersFulfilled = Order::where('farm_id', $farm->id)
+            ->where('status', 'completed')
+            ->count();
+
+        // 4. New / Unique Customers who placed non-cancelled orders with this shop
+        $newCustomers = Order::where('farm_id', $farm->id)
+            ->where('status', '!=', 'cancelled')
+            ->distinct('customer_id')
+            ->count('customer_id');
+
+        // 5. Low stock threshold (standard <= 10)
+        $lowStockThreshold = 10;
+        $lowStockCount = Product::where('farm_id', $farm->id)
+            ->where('stock', '<=', $lowStockThreshold)
+            ->count();
+
+        // 6. Stock health per product
+        // Standard capacity benchmark for visual bar (50 items)
+        $capacityBenchmark = 50;
+        $products = Product::where('farm_id', $farm->id)
+            ->orderBy('stock', 'asc')
+            ->get();
+
+        $stockHealth = $products->map(function ($product) use ($capacityBenchmark, $lowStockThreshold) {
+            $percent = min(100, (int) round(($product->stock / $capacityBenchmark) * 100));
+            if ($product->stock > 0 && $percent < 5) {
+                $percent = 5;
+            }
+
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'stock' => (int) $product->stock,
+                'percentage' => $percent,
+                'is_low' => $product->stock <= $lowStockThreshold,
+                'is_out_of_stock' => $product->stock <= 0,
+            ];
+        });
+
+        return response()->json([
+            'stats' => [
+                'total_sales' => $totalSales,
+                'pending_orders' => $pendingOrders,
+                'low_stock_count' => $lowStockCount,
+                'new_customers' => $newCustomers,
+                'orders_fulfilled' => $ordersFulfilled,
+                'stock_health' => $stockHealth,
+            ]
         ]);
     }
 

@@ -44,7 +44,7 @@ const GoogleCallback: React.FC = () => {
           <p className="text-gray-600 mb-6">{error}</p>
           <button
             onClick={() => navigate('/login', { replace: true })}
-            className="w-full rounded-full bg-brand py-3 font-semibold text-white shadow-lg shadow-brand/20 transition hover:bg-brand-dark"
+            className="w-full rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
           >
             Go back to Sign In
           </button>

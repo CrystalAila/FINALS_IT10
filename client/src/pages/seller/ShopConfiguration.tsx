@@ -116,7 +116,6 @@ const ShopConfiguration: React.FC = () => {
 
       {user && user.status === 'verified' && isExpiringSoon && (
         <div className="mb-6 rounded-3xl border border-orange-200 bg-orange-50 p-5 text-orange-800 shadow-sm flex items-start gap-4">
-          <div className="text-2xl mt-0.5">🔔</div>
           <div>
             <h3 className="font-semibold text-lg">Business Permit Near Expiration</h3>
             <p className="mt-1 text-sm text-orange-700">
@@ -210,7 +209,7 @@ const ShopConfiguration: React.FC = () => {
           <button
             type="submit"
             disabled={saving}
-            className="rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-brand/25 transition hover:bg-brand-dark disabled:opacity-60"
+            className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
           >
             {saving ? 'Saving...' : 'Save shop info'}
           </button>

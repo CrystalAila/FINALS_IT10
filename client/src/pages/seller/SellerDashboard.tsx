@@ -1,19 +1,59 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../lib/axios';
+import { formatPrice } from '../../types/marketplace';
 
-const metricCards = [
-  { title: 'Total Sales', value: '₱68,430', description: 'Monthly revenue across all listings' },
-  { title: 'Pending Orders', value: '12', description: 'Orders awaiting pickup or delivery' },
-  { title: 'Low Stock', value: '5', description: 'Products below reorder threshold' },
-];
+type StockHealthItem = {
+  id: number;
+  name: string;
+  stock: number;
+  percentage: number;
+  is_low: boolean;
+  is_out_of_stock: boolean;
+};
+
+type DashboardStats = {
+  total_sales: number;
+  pending_orders: number;
+  low_stock_count: number;
+  new_customers: number;
+  orders_fulfilled: number;
+  stock_health: StockHealthItem[];
+};
 
 const SellerDashboard: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
-  const [cards] = useState(metricCards);
   const message = (location.state as { message?: string } | null)?.message;
+
+  const [stats, setStats] = useState<DashboardStats>({
+    total_sales: 0,
+    pending_orders: 0,
+    low_stock_count: 0,
+    new_customers: 0,
+    orders_fulfilled: 0,
+    stock_health: [],
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await api.get('/seller/dashboard-stats');
+        if (res.data?.stats) {
+          setStats(res.data.stats);
+        }
+      } catch (err) {
+        console.error('Failed to load seller dashboard stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   // Check if permit is expiring soon
   const getDaysUntilExpiry = () => {
@@ -29,6 +69,26 @@ const SellerDashboard: React.FC = () => {
   const daysRemaining = getDaysUntilExpiry();
   const isExpiringSoon = daysRemaining !== null && daysRemaining > 0 && daysRemaining <= 30;
 
+  const cards = [
+    {
+      title: 'Total Sales',
+      value: loading ? '...' : formatPrice(stats.total_sales),
+      description: 'Monthly revenue across all listings',
+    },
+    {
+      title: 'Pending Orders',
+      value: loading ? '...' : String(stats.pending_orders),
+      description: 'Orders awaiting pickup or delivery',
+    },
+    {
+      title: 'Low Stock',
+      value: loading ? '...' : String(stats.low_stock_count),
+      description: 'Products below reorder threshold',
+    },
+  ];
+
+  const hasAttention = stats.stock_health.some((item) => item.is_low);
+
   return (
     <Layout>
       {message && (
@@ -39,7 +99,6 @@ const SellerDashboard: React.FC = () => {
 
       {user && user.status === 'verified' && isExpiringSoon && (
         <div className="mb-6 rounded-3xl border border-orange-200 bg-orange-50 p-5 text-orange-800 shadow-sm flex items-start gap-4">
-          <div className="text-2xl mt-0.5">🔔</div>
           <div>
             <h3 className="font-semibold text-lg">Business Permit Expiring Soon</h3>
             <p className="mt-1 text-sm text-orange-700">
@@ -49,7 +108,7 @@ const SellerDashboard: React.FC = () => {
             <div className="mt-3">
               <Link
                 to="/seller/shop"
-                className="inline-flex rounded-xl bg-orange-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-orange-700 transition"
+                className="inline-flex rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all duration-150"
               >
                 Renew Permit & Configure Shop
               </Link>
@@ -60,7 +119,6 @@ const SellerDashboard: React.FC = () => {
 
       {user && user.status !== 'verified' && (
         <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-800 shadow-sm flex items-start gap-4">
-          <div className="text-2xl mt-0.5">⚠️</div>
           <div>
             <h3 className="font-semibold text-lg">Shop Verification Required</h3>
             <p className="mt-1 text-sm text-amber-700">
@@ -70,7 +128,7 @@ const SellerDashboard: React.FC = () => {
             <div className="mt-3 flex gap-3">
               <Link
                 to="/seller/verification"
-                className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-700 transition"
+                className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all duration-150"
               >
                 View Verification Status
               </Link>
@@ -114,11 +172,15 @@ const SellerDashboard: React.FC = () => {
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div className="rounded-3xl bg-slate-50 p-4">
               <p className="text-sm text-slate-500">New customers</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-900">34</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">
+                {loading ? '...' : stats.new_customers}
+              </p>
             </div>
             <div className="rounded-3xl bg-slate-50 p-4">
               <p className="text-sm text-slate-500">Orders fulfilled</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-900">48</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">
+                {loading ? '...' : stats.orders_fulfilled}
+              </p>
             </div>
           </div>
         </div>
@@ -129,27 +191,45 @@ const SellerDashboard: React.FC = () => {
               <h2 className="text-xl font-semibold text-slate-900">Stock health</h2>
               <p className="mt-1 text-sm text-slate-500">A quick check for critical listings and restock needs.</p>
             </div>
-            <span className="rounded-full bg-orange-100 px-3 py-1 text-sm font-semibold text-orange-700">Attention</span>
+            <span
+              className={`rounded-full px-3 py-1 text-sm font-semibold ${
+                hasAttention ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-800'
+              }`}
+            >
+              {hasAttention ? 'Attention' : 'Healthy'}
+            </span>
           </div>
           <div className="mt-6 space-y-3">
-            <div className="rounded-3xl bg-slate-50 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-slate-700">Broiler chicken</p>
-                <span className="text-sm text-slate-500">18 left</span>
+            {loading ? (
+              <div className="rounded-3xl bg-slate-50 p-6 text-center text-sm text-slate-500">
+                Loading stock health...
               </div>
-              <div className="mt-3 h-2 rounded-full bg-slate-200">
-                <div className="h-2 rounded-full bg-brand" style={{ width: '22%' }} />
+            ) : stats.stock_health.length === 0 ? (
+              <div className="rounded-3xl bg-slate-50 p-6 text-center text-sm text-slate-500">
+                No products listed yet.
               </div>
-            </div>
-            <div className="rounded-3xl bg-slate-50 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-slate-700">Free-range eggs</p>
-                <span className="text-sm text-slate-500">9 left</span>
-              </div>
-              <div className="mt-3 h-2 rounded-full bg-slate-200">
-                <div className="h-2 rounded-full bg-orange-500" style={{ width: '12%' }} />
-              </div>
-            </div>
+            ) : (
+              stats.stock_health.map((item) => (
+                <div key={item.id} className="rounded-3xl bg-slate-50 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-slate-700 capitalize">{item.name}</p>
+                    <span className="text-sm text-slate-500">{item.stock} left</span>
+                  </div>
+                  <div className="mt-3 h-2 rounded-full bg-slate-200">
+                    <div
+                      className={`h-2 rounded-full ${
+                        item.is_out_of_stock
+                          ? 'bg-rose-500'
+                          : item.is_low
+                          ? 'bg-orange-500'
+                          : 'bg-brand'
+                      }`}
+                      style={{ width: `${Math.max(item.stock > 0 ? 5 : 0, Math.min(100, item.percentage))}%` }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -158,3 +238,4 @@ const SellerDashboard: React.FC = () => {
 };
 
 export default SellerDashboard;
+

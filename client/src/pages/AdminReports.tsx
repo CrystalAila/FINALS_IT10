@@ -65,21 +65,16 @@ const AdminReports: React.FC = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="rounded-3xl border border-emerald-900 bg-emerald-950 p-6 text-emerald-100 shadow-sm">
-          <p className="text-sm uppercase tracking-[0.2em] text-emerald-300">System Reports</p>
-          <h1 className="mt-3 text-3xl font-semibold">Marketplace & Compliance Analytics</h1>
-          <p className="mt-2 max-w-2xl text-slate-300">
-            Real-time analytics and statistics across verified sellers, order transactions, compliance reviews, and financial volume.
-          </p>
+        <div
+          className="rounded-3xl p-6 text-white shadow-sm"
+          style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
+        >
+          <p className="text-sm uppercase tracking-[0.2em] text-emerald-100 font-semibold">System Reports</p>
+          <h1 className="mt-2 text-3xl font-semibold">Marketplace & Compliance Analytics</h1>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-xs uppercase font-semibold text-slate-500">Total Revenue</p>
-            <p className="mt-2 text-xl font-bold text-slate-900">{formatPHP(data.total_revenue)}</p>
-            <p className="mt-1 text-xs text-slate-400">Completed order payouts</p>
-          </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs uppercase font-semibold text-slate-500">Total Orders</p>
             <p className="mt-2 text-xl font-bold text-slate-900">{data.total_orders}</p>
@@ -108,35 +103,32 @@ const AdminReports: React.FC = () => {
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setActiveTab('sales')}
-            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition flex items-center gap-2 ${
+            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
               activeTab === 'sales'
                 ? 'bg-emerald-950 text-white shadow-md'
                 : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
             }`}
           >
-            <span className="text-lg">📈</span>
             Sales Volume & Charts
           </button>
           <button
             onClick={() => setActiveTab('verification')}
-            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition flex items-center gap-2 ${
+            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
               activeTab === 'verification'
                 ? 'bg-emerald-950 text-white shadow-md'
                 : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
             }`}
           >
-            <span className="text-lg">✓</span>
             Seller & Permit Verification
           </button>
           <button
             onClick={() => setActiveTab('orders')}
-            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition flex items-center gap-2 ${
+            className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
               activeTab === 'orders'
                 ? 'bg-emerald-950 text-white shadow-md'
                 : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
             }`}
           >
-            <span className="text-lg">📦</span>
             Order Status Breakdown
           </button>
         </div>
@@ -259,42 +251,27 @@ const AdminReports: React.FC = () => {
             <h2 className="text-xl font-bold text-slate-900 mb-4">Order Pipeline Fulfillment</h2>
             <p className="text-sm text-slate-600 mb-6">Status breakdown of all orders placed across the PoultryLink marketplace platform.</p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase text-slate-500 font-semibold">Completed Orders</p>
-                  <p className="mt-2 text-2xl font-bold text-slate-900">{data.order_stats?.completed || 0}</p>
-                </div>
-                <span className="text-2xl">✅</span>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-xs uppercase text-slate-500 font-semibold">Completed Orders</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">{data.order_stats?.completed || 0}</p>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase text-slate-500 font-semibold">Pending Approvals</p>
-                  <p className="mt-2 text-2xl font-bold text-slate-900">{data.order_stats?.pending || 0}</p>
-                </div>
-                <span className="text-2xl">⏳</span>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-xs uppercase text-slate-500 font-semibold">Pending Approvals</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">{data.order_stats?.pending || 0}</p>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase text-slate-500 font-semibold">Confirmed & Processing</p>
-                  <p className="mt-2 text-2xl font-bold text-slate-900">
-                    {(data.order_stats?.confirmed || 0) + (data.order_stats?.processing || 0)}
-                  </p>
-                </div>
-                <span className="text-2xl">🚜</span>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-xs uppercase text-slate-500 font-semibold">Confirmed & Processing</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">
+                  {(data.order_stats?.confirmed || 0) + (data.order_stats?.processing || 0)}
+                </p>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase text-slate-500 font-semibold">Ready for Delivery</p>
-                  <p className="mt-2 text-2xl font-bold text-slate-900">{data.order_stats?.ready || 0}</p>
-                </div>
-                <span className="text-2xl">🛵</span>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-xs uppercase text-slate-500 font-semibold">Ready for Delivery</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">{data.order_stats?.ready || 0}</p>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase text-slate-500 font-semibold">Cancelled Orders</p>
-                  <p className="mt-2 text-2xl font-bold text-red-600">{data.order_stats?.cancelled || 0}</p>
-                </div>
-                <span className="text-2xl text-red-500">✕</span>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-xs uppercase text-slate-500 font-semibold">Cancelled Orders</p>
+                <p className="mt-2 text-2xl font-bold text-red-600">{data.order_stats?.cancelled || 0}</p>
               </div>
             </div>
           </div>

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
 import Layout from '../../components/Layout';
 import api from '../../lib/axios';
 import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '../../types/marketplace';
@@ -66,8 +65,7 @@ const RiderOrderDetails: React.FC = () => {
     <Layout>
       <div className="mb-6">
         <Link to="/rider/dashboard" className="inline-flex items-center gap-2 text-sm font-semibold text-brand hover:underline">
-          <ArrowLeft className="h-4 w-4" />
-          Back to deliveries
+          ← Back to deliveries
         </Link>
       </div>
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, LogOut, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function ProfilePage() {
@@ -54,8 +53,8 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 text-brand">
-          <User className="h-6 w-6" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 text-brand font-bold text-lg">
+          {user?.fullname ? user.fullname.charAt(0).toUpperCase() : 'U'}
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
@@ -122,9 +121,9 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((p) => !p)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-slate-700"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
             </div>
@@ -144,7 +143,7 @@ export default function ProfilePage() {
         <button
           type="submit"
           disabled={loading}
-          className="rounded-full bg-brand px-8 py-3 font-bold text-white hover:bg-brand-dark disabled:opacity-60"
+          className="w-full rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
           {loading ? 'Saving...' : 'Save Changes'}
         </button>

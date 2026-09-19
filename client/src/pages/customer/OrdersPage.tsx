@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Package } from 'lucide-react';
 import api from '../../lib/axios';
 import type { Order } from '../../types/marketplace';
 import { formatPrice, ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '../../types/marketplace';
@@ -33,8 +32,7 @@ export default function OrdersPage() {
 
       {orders.length === 0 ? (
         <div className="rounded-3xl bg-white p-12 text-center shadow-card">
-          <Package className="mx-auto h-12 w-12 text-gray-300" />
-          <p className="mt-4 text-gray-500">No orders yet.</p>
+          <p className="text-gray-500">No orders yet.</p>
           <Link to="/customer" className="mt-4 inline-block text-brand hover:underline">
             Start shopping
           </Link>
@@ -58,7 +56,7 @@ export default function OrdersPage() {
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold ${ORDER_STATUS_COLORS[order.status]}`}>
                     {ORDER_STATUS_LABELS[order.status]}
                   </span>
-                  <ChevronRight className="h-5 w-5 text-gray-400" />
+                  <span className="text-sm font-semibold text-gray-400">→</span>
                 </div>
               </Link>
             </li>

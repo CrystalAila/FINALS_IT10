@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, MapPin, Star, Heart, CheckCircle, AlertTriangle } from 'lucide-react';
 import api from '../../lib/axios';
 import ProductCard from '../../components/customer/ProductCard';
 import type { Farm, Product } from '../../types/marketplace';
@@ -73,46 +72,41 @@ export default function ShopDetailsPage() {
           to="/customer"
           className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-brand"
         >
-          <ArrowLeft className="h-4 w-4" />
-          Back to marketplace
+          ← Back to marketplace
         </Link>
       </div>
 
       {/* Shop Profile Banner */}
       <section className="bg-white rounded-3xl border border-slate-200 p-8 shadow-card flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-5">
-          {/* Shop Logo Placeholder */}
-          <div className="h-20 w-20 rounded-3xl bg-brand/10 text-brand text-4xl flex items-center justify-center border border-brand/20 select-none shadow-inner shrink-0">
+          {/* Shop Logo */}
+          <div className="h-20 w-20 rounded-3xl bg-brand/10 text-brand text-2xl font-bold flex items-center justify-center border border-brand/20 select-none shadow-inner shrink-0 uppercase">
             {farm.logo ? (
               <img src={farm.logo} alt={farm.name} className="h-full w-full object-cover rounded-3xl" />
             ) : (
-              '🏡'
+              farm.name.charAt(0)
             )}
           </div>
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold text-slate-900 leading-none">{farm.name}</h1>
               {isVerified && (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-100">
-                  <CheckCircle className="h-3 w-3 fill-emerald-500 text-white" />
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-100">
                   Verified
                 </span>
               )}
               {isExpired && (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700 border border-rose-100">
-                  <AlertTriangle className="h-3 w-3 text-rose-500" />
+                <span className="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700 border border-rose-100">
                   Permit Expired
                 </span>
               )}
             </div>
 
             <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
-              <span className="flex items-center gap-1 font-medium">
-                <MapPin className="h-4 w-4 text-slate-400" />
+              <span className="font-medium text-slate-600">
                 {farm.location || 'Capiz, Philippines'}
               </span>
-              <span className="flex items-center gap-1">
-                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
                 {displayRating(farm.rating ?? 5.0)} rating
               </span>
             </div>
@@ -126,13 +120,12 @@ export default function ShopDetailsPage() {
           type="button"
           onClick={handleToggleFavorite}
           disabled={toggling}
-          className={`w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold border transition shadow-sm ${
+          className={`w-full md:w-auto inline-flex items-center justify-center rounded-2xl px-6 py-3 text-sm font-bold border transition shadow-sm ${
             isFavorited
               ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100/50'
               : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
           }`}
         >
-          <Heart className={`h-5 w-5 ${isFavorited ? 'fill-rose-600 text-rose-600' : 'text-slate-400'}`} />
           {isFavorited ? 'Shop Favorited' : 'Favorite Shop'}
         </button>
       </section>

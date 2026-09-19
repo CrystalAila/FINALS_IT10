@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import Layout from '../../components/Layout';
 import api from '../../lib/axios';
 import type { Rider } from '../../types/marketplace';
-import { Trash } from 'lucide-react';
+import { SearchIcon } from '../../components/common/SearchIcon';
 
 const RiderRegistry: React.FC = () => {
   const [riders, setRiders] = useState<Rider[]>([]);
@@ -15,6 +15,7 @@ const RiderRegistry: React.FC = () => {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchRiders();
@@ -30,6 +31,16 @@ const RiderRegistry: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const filteredRiders = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return riders;
+    return riders.filter((r) =>
+      r.fullname.toLowerCase().includes(q) ||
+      r.phone.toLowerCase().includes(q) ||
+      (r.user?.username && r.user.username.toLowerCase().includes(q))
+    );
+  }, [riders, searchQuery]);
 
   const photoPreview = useMemo(
     () => (photoFile ? URL.createObjectURL(photoFile) : ''),
@@ -97,10 +108,22 @@ const RiderRegistry: React.FC = () => {
         <button
           type="button"
           onClick={() => setShowForm((show) => !show)}
-          className="inline-flex items-center justify-center rounded-full bg-orange-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-500/20 transition hover:bg-orange-700"
+          className="inline-flex items-center justify-center rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
           {showForm ? 'Cancel' : 'Add New Rider'}
         </button>
+      </div>
+
+      {/* Real-time search bar */}
+      <div className="mb-6 flex max-w-md items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search riders by name, phone, username..."
+          className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+        />
+        <SearchIcon className="h-4 w-4 text-slate-400 flex-shrink-0" />
       </div>
 
       {showForm && (
@@ -187,7 +210,7 @@ const RiderRegistry: React.FC = () => {
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex items-center justify-center rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-brand/20 transition hover:bg-brand-dark disabled:opacity-65"
+                className="inline-flex items-center justify-center rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               >
                 {saving ? 'Saving...' : 'Save rider'}
               </button>
@@ -202,16 +225,27 @@ const RiderRegistry: React.FC = () => {
         <div className="rounded-3xl border border-dashed border-slate-300 p-12 text-center">
           <p className="text-slate-500">No riders registered yet.</p>
         </div>
+      ) : filteredRiders.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-slate-300 p-12 text-center bg-white">
+          <p className="text-slate-500">No riders match your search.</p>
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            className="mt-2 text-sm font-semibold text-brand hover:underline"
+          >
+            Clear search
+          </button>
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {riders.map((rider) => (
+          {filteredRiders.map((rider) => (
             <div key={rider.id} className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
               <button
                 onClick={() => handleDelete(rider.id)}
-                className="absolute right-4 top-4 rounded-full bg-white/80 p-2 text-red-600 shadow-sm transition hover:bg-red-50"
+                className="absolute right-4 top-4 rounded-xl bg-white/90 px-2.5 py-1 text-xs font-semibold text-red-600 shadow-sm transition hover:bg-red-50 border border-red-100"
                 title="Remove Rider"
               >
-                <Trash className="h-4 w-4" />
+                Remove
               </button>
               <div className="h-44 overflow-hidden bg-slate-100">
                 <img src={rider.photo_url} alt={rider.fullname} className="h-full w-full object-cover" />

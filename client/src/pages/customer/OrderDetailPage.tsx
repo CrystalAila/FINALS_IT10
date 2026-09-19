@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Printer, AlertTriangle, CheckCircle } from 'lucide-react';
 import api from '../../lib/axios';
 import type { Order } from '../../types/marketplace';
 import {
@@ -84,8 +83,7 @@ export default function OrderDetailPage() {
           to="/customer/orders"
           className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-brand"
         >
-          <ArrowLeft className="h-4 w-4" />
-          Back to orders
+          ← Back to orders
         </Link>
         
         <div className="flex items-center gap-3">
@@ -106,7 +104,7 @@ export default function OrderDetailPage() {
               type="button"
               onClick={handleConfirmReceipt}
               disabled={submitting}
-              className="rounded-full bg-emerald-600 px-6 py-2.5 font-semibold text-white hover:bg-emerald-700 transition disabled:opacity-50"
+              className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
               {submitting ? 'Confirming...' : 'Order Received'}
             </button>
@@ -117,7 +115,6 @@ export default function OrderDetailPage() {
             onClick={handlePrint}
             className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 font-semibold text-white hover:bg-brand-dark"
           >
-            <Printer className="h-4 w-4" />
             Print Invoice
           </button>
         </div>
@@ -125,7 +122,6 @@ export default function OrderDetailPage() {
 
       {receiveSuccess && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 flex items-center gap-2 print:hidden">
-          <CheckCircle className="h-4 w-4 text-emerald-600" />
           Order confirmed as received! Thank you for buying from our local farm.
         </div>
       )}
@@ -236,8 +232,7 @@ export default function OrderDetailPage() {
       {showCancelModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm print:hidden">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center gap-2.5 text-red-600 mb-3">
-              <AlertTriangle className="h-6 w-6 shrink-0" />
+            <div className="mb-3">
               <h3 className="text-lg font-bold text-slate-900">Cancel Order</h3>
             </div>
             

@@ -1,5 +1,4 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Trash2 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import QuantitySelector from '../../components/customer/QuantitySelector';
 import { SIZE_LABELS, formatPrice } from '../../types/marketplace';
@@ -56,9 +55,9 @@ export default function CartPage() {
                 <button
                   type="button"
                   onClick={() => removeItem(item.productId, item.size)}
-                  className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+                  className="rounded-xl px-2.5 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-50"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  Remove
                 </button>
               </div>
             </div>
@@ -74,7 +73,7 @@ export default function CartPage() {
         <button
           type="button"
           onClick={() => navigate('/customer/checkout')}
-          className="mt-4 w-full rounded-full bg-red-600 py-3.5 text-lg font-bold text-white shadow-lg shadow-red-600/25 transition hover:bg-red-700"
+          className="mt-4 w-full rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
           Check Out
         </button>

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { MapPin, Pencil, Plus, Star, Trash2 } from 'lucide-react';
 import api from '../../lib/axios';
 import Modal from '../../components/customer/Modal';
 import { useAuth } from '../../context/AuthContext';
@@ -109,9 +108,8 @@ export default function AddressBookPage() {
         <button
           type="button"
           onClick={openAdd}
-          className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-dark"
+          className="inline-flex items-center justify-center rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
-          <Plus className="h-4 w-4" />
           Add Address
         </button>
       </div>
@@ -122,8 +120,7 @@ export default function AddressBookPage() {
         <p className="text-center text-gray-500">Loading addresses...</p>
       ) : addresses.length === 0 ? (
         <div className="rounded-3xl bg-white p-12 text-center shadow-card">
-          <MapPin className="mx-auto h-12 w-12 text-gray-300" />
-          <p className="mt-4 text-gray-500">No saved addresses yet.</p>
+          <p className="text-gray-500">No saved addresses yet.</p>
           <button
             type="button"
             onClick={openAdd}
@@ -140,47 +137,43 @@ export default function AddressBookPage() {
               className={`rounded-2xl bg-white p-5 shadow-card ${addr.is_default ? 'ring-2 ring-brand/30' : ''}`}
             >
               <div className="flex items-start justify-between gap-4">
-                <div className="flex gap-3">
-                  <MapPin className="mt-0.5 h-5 w-5 flex-shrink-0 text-brand" />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900">{addr.full_name}</p>
-                      {addr.is_default && (
-                        <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand">
-                          Default
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600">{addr.phone}</p>
-                    <p className="text-sm text-gray-600">
-                      {addr.street_address}, {addr.region} {addr.postal_code}
-                    </p>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900">{addr.full_name}</p>
+                    {addr.is_default && (
+                      <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand">
+                        Default
+                      </span>
+                    )}
                   </div>
+                  <p className="text-sm text-gray-600">{addr.phone}</p>
+                  <p className="text-sm text-gray-600">
+                    {addr.street_address}, {addr.region} {addr.postal_code}
+                  </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   {!addr.is_default && (
                     <button
                       type="button"
                       onClick={() => handleSetDefault(addr.id)}
-                      title="Set as default"
-                      className="rounded-lg p-2 text-gray-400 hover:bg-brand/10 hover:text-brand"
+                      className="rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
                     >
-                      <Star className="h-4 w-4" />
+                      Set Default
                     </button>
                   )}
                   <button
                     type="button"
                     onClick={() => openEdit(addr)}
-                    className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    className="rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
                   >
-                    <Pencil className="h-4 w-4" />
+                    Edit
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(addr.id)}
-                    className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                    className="rounded-lg px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    Delete
                   </button>
                 </div>
               </div>
@@ -264,7 +257,7 @@ export default function AddressBookPage() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full rounded-full bg-brand py-3 font-bold text-white hover:bg-brand-dark disabled:opacity-60"
+            className="w-full rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
           >
             {saving ? 'Saving...' : 'Save Address'}
           </button>

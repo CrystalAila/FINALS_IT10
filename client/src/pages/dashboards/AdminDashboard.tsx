@@ -13,11 +13,12 @@ interface DashboardStats {
   registeredSellers: number;
   verifiedSellers: number;
   buyers: number;
-  products: number;
-  transactions: number;
   pendingPermits: number;
-  revenue: number;
-  flaggedListings: number;
+  adminShare: number;
+  adminShareCollected?: number;
+  adminShareDue?: number;
+  unpaidSharesCount?: number;
+  revenue?: number;
   weeklyActivity?: WeeklyDay[];
 }
 
@@ -27,11 +28,11 @@ const AdminDashboard: React.FC = () => {
     registeredSellers: 0,
     verifiedSellers: 0,
     buyers: 0,
-    products: 0,
-    transactions: 0,
     pendingPermits: 0,
-    revenue: 0,
-    flaggedListings: 0,
+    adminShare: 0,
+    adminShareCollected: 0,
+    adminShareDue: 0,
+    unpaidSharesCount: 0,
     weeklyActivity: [],
   });
   const [loading, setLoading] = useState(true);
@@ -55,17 +56,26 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const StatCard = ({ icon, label, value, trend, color }: any) => (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div>
+  const StatCard = ({ label, value, trend, color, onClick, badge }: any) => (
+    <div
+      onClick={onClick}
+      className={`rounded-3xl border border-slate-200 bg-white p-6 shadow-sm ${
+        onClick ? 'cursor-pointer hover:border-emerald-500 hover:shadow-md transition' : ''
+      }`}
+    >
+      <div>
+        <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-slate-500">{label}</p>
-          <p className={`mt-2 text-3xl font-bold ${color}`}>
-            {typeof value === 'number' ? value.toLocaleString() : value}
-          </p>
-          {trend && <p className="mt-2 text-xs text-slate-500">{trend}</p>}
+          {badge && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+              {badge}
+            </span>
+          )}
         </div>
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-xl">{icon}</div>
+        <p className={`mt-2 text-3xl font-bold ${color}`}>
+          {typeof value === 'number' ? value.toLocaleString() : value}
+        </p>
+        {trend && <p className="mt-2 text-xs text-slate-500">{trend}</p>}
       </div>
     </div>
   );
@@ -74,12 +84,12 @@ const AdminDashboard: React.FC = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="rounded-3xl border border-emerald-900 bg-emerald-950 p-6 text-emerald-100 shadow-sm">
-          <p className="text-sm uppercase tracking-[0.2em] text-emerald-300">Marketplace Overview</p>
-          <h1 className="mt-3 text-3xl font-semibold">Admin Dashboard</h1>
-          <p className="mt-2 max-w-2xl text-slate-300">
-            Monitor seller verifications, marketplace activity, transactions, and system performance across PoultryLink.
-          </p>
+        <div
+          className="rounded-3xl p-6 text-white shadow-sm"
+          style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
+        >
+          <p className="text-sm uppercase tracking-[0.2em] text-emerald-100 font-semibold">Marketplace Overview</p>
+          <h1 className="mt-2 text-3xl font-semibold">Admin Dashboard</h1>
         </div>
 
         {error && (
@@ -87,7 +97,7 @@ const AdminDashboard: React.FC = () => {
             <p className="text-sm font-medium">{error}</p>
             <button
               onClick={fetchDashboardStats}
-              className="rounded-xl bg-red-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-900 transition"
+              className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-all duration-150"
             >
               Retry
             </button>
@@ -101,25 +111,26 @@ const AdminDashboard: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Top Stats Row 1 */}
-            <div className="grid gap-6 lg:grid-cols-4">
-              <StatCard icon="🏢" label="Registered Sellers" value={stats.registeredSellers || 0} color="text-emerald-600" />
-              <StatCard icon="✓" label="Verified Sellers" value={stats.verifiedSellers || 0} color="text-green-600" />
-              <StatCard icon="🛒" label="Total Buyers" value={stats.buyers || 0} color="text-blue-600" />
-              <StatCard icon="📦" label="Products Listed" value={stats.products || 0} color="text-orange-600" />
-            </div>
-
-            {/* Top Stats Row 2 */}
-            <div className="grid gap-6 lg:grid-cols-4">
-              <StatCard icon="💳" label="Total Transactions" value={stats.transactions || 0} color="text-purple-600" />
-              <StatCard icon="⏳" label="Pending Permits" value={stats.pendingPermits || 0} color="text-amber-600" />
+            {/* Top Stats */}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <StatCard label="Registered Sellers" value={stats.registeredSellers || 0} color="text-emerald-600" />
+              <StatCard label="Verified Sellers" value={stats.verifiedSellers || 0} color="text-green-600" />
+              <StatCard label="Total Buyers" value={stats.buyers || 0} color="text-blue-600" />
+              <StatCard label="Pending Permits" value={stats.pendingPermits || 0} color="text-amber-600" />
               <StatCard
-                icon="💰"
-                label="Revenue (₱)"
-                value={`₱${Number(stats.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                label="Admin Share (5%)"
+                value={`₱${Number(stats.adminShare ?? stats.revenue ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                trend={
+                  (stats.unpaidSharesCount ?? 0) > 0
+                    ? `Due: ₱${Number(stats.adminShareDue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} • Click to view`
+                    : (stats.adminShareCollected ?? 0) > 0
+                    ? `Collected: ₱${Number(stats.adminShareCollected || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                    : '5% monthly share from all sellers'
+                }
+                badge={(stats.unpaidSharesCount ?? 0) > 0 ? `${stats.unpaidSharesCount} Unpaid` : undefined}
                 color="text-emerald-600"
+                onClick={() => navigate('/admin/shares')}
               />
-              <StatCard icon="🚩" label="Flagged Listings" value={stats.flaggedListings || 0} color="text-red-600" />
             </div>
 
             {/* Activity Section */}
@@ -131,7 +142,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <button
                   onClick={() => navigate('/admin/reports')}
-                  className="rounded-2xl bg-emerald-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-900"
+                  className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150"
                 >
                   View Report
                 </button>

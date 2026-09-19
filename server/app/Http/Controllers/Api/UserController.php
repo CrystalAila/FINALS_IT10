@@ -425,8 +425,31 @@ class UserController extends Controller
             })
             ->count();
 
-        // 7. Revenue (completed orders)
-        $revenue = (float) \App\Models\Order::where('status', 'completed')->sum('total');
+        // 7. Monthly Revenue from completed orders across all sellers & Admin 5% Share
+        \App\Services\AdminShareService::syncSharesForMonth();
+        \App\Services\AdminShareService::checkAndApplyAutoSuspensions();
+
+        $currentMonth = now()->format('Y-m');
+        $monthlyRevenue = (float) \App\Models\Order::where('status', 'completed')
+            ->where(function ($q) {
+                $q->where('created_at', '>=', now()->startOfMonth())
+                  ->orWhere('updated_at', '>=', now()->startOfMonth());
+            })
+            ->sum('total');
+
+        $adminShare = round($monthlyRevenue * 0.05, 2);
+        $adminShareCollected = (float) \App\Models\AdminShare::where('billing_period', $currentMonth)
+            ->where('status', 'paid')
+            ->sum('share_amount');
+        $adminShareDue = (float) \App\Models\AdminShare::where('billing_period', $currentMonth)
+            ->where('status', 'unpaid')
+            ->sum('share_amount');
+        $unpaidSharesCount = \App\Models\AdminShare::whereIn('status', ['unpaid', 'overdue'])
+            ->where('share_amount', '>', 0)
+            ->distinct('seller_id')
+            ->count('seller_id');
+
+        $totalRevenue = (float) \App\Models\Order::where('status', 'completed')->sum('total');
 
         // 8. Flagged Listings
         // Listings flagged explicitly OR belonging to suspended/rejected sellers/farms
@@ -460,7 +483,13 @@ class UserController extends Controller
             'products' => $products,
             'transactions' => $transactions,
             'pendingPermits' => $pendingPermits,
-            'revenue' => $revenue,
+            'adminShare' => $adminShare,
+            'adminShareCollected' => $adminShareCollected,
+            'adminShareDue' => $adminShareDue,
+            'unpaidSharesCount' => $unpaidSharesCount,
+            'revenue' => $adminShare,
+            'monthlyRevenue' => $monthlyRevenue,
+            'totalRevenue' => $totalRevenue,
             'flaggedListings' => $flaggedListings,
             'weeklyActivity' => $weeklyActivity,
         ]);
@@ -588,6 +617,101 @@ class UserController extends Controller
         return response()->json([
             'message' => $product->is_flagged ? 'Product has been flagged' : 'Product flag removed',
             'product' => $product,
+        ]);
+    }
+
+    /**
+     * Get all registered sellers with their farm details, sales metrics, and product inventory for Market Monitoring.
+     */
+    public function getMarketSellers(Request $request)
+    {
+        $sellers = User::whereIn('role', ['seller', 'reseller'])
+            ->with([
+                'farm.products',
+                'farm.orders',
+            ])
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $mapped = $sellers->map(function ($seller) {
+            $farm = $seller->farm;
+            $orders = $farm ? $farm->orders : collect();
+            $products = $farm ? $farm->products : collect();
+
+            $completedOrders = $orders->where('status', 'completed');
+            $totalRevenue = (float) $completedOrders->sum('total');
+            $totalTransactions = $orders->count();
+            $completedCount = $completedOrders->count();
+            $pendingCount = $orders->where('status', 'pending')->count();
+            $cancelledCount = $orders->where('status', 'cancelled')->count();
+
+            $isVerified = ($seller->status === 'verified') || ($farm && $farm->permit_status === 'approved');
+            $displayStatus = $seller->status === 'suspended' ? 'Suspended' : ($isVerified ? 'Verified' : 'Pending');
+
+            return [
+                'id' => $seller->id,
+                'fullname' => $seller->fullname,
+                'business_name' => $seller->business_name,
+                'username' => $seller->username,
+                'email' => $seller->email,
+                'phone' => $seller->phone,
+                'role' => $seller->role,
+                'status' => $seller->status,
+                'display_status' => $displayStatus,
+                'created_at' => $seller->created_at ? $seller->created_at->format('M d, Y') : null,
+                'farm' => $farm ? [
+                    'id' => $farm->id,
+                    'name' => $farm->name,
+                    'location' => $farm->location,
+                    'description' => $farm->description,
+                    'permit_status' => $farm->permit_status,
+                    'permit_issue_date' => $farm->permit_issue_date ? $farm->permit_issue_date->format('Y-m-d') : null,
+                    'permit_expiry_date' => $farm->permit_expiry_date ? $farm->permit_expiry_date->format('Y-m-d') : null,
+                    'is_permit_expired' => $farm->is_permit_expired,
+                    'rating' => $farm->rating,
+                ] : null,
+                'total_revenue' => $totalRevenue,
+                'total_transactions' => $totalTransactions,
+                'completed_transactions' => $completedCount,
+                'pending_transactions' => $pendingCount,
+                'cancelled_transactions' => $cancelledCount,
+                'products_count' => $products->count(),
+                'products' => $products->map(function ($product) {
+                    $price = (float) ($product->price_medium > 0 ? $product->price_medium : ($product->price_small > 0 ? $product->price_small : $product->price_large));
+                    return [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'category' => $product->category,
+                        'description' => $product->description,
+                        'image' => $product->image,
+                        'price' => $price,
+                        'price_small' => (float) $product->price_small,
+                        'price_medium' => (float) $product->price_medium,
+                        'price_large' => (float) $product->price_large,
+                        'price_jumbo' => (float) $product->price_jumbo,
+                        'stock' => (int) ($product->stock ?? 0),
+                        'is_active' => (bool) $product->is_active,
+                        'is_flagged' => (bool) $product->is_flagged,
+                        'farm_origin' => $product->farm_origin,
+                        'rating' => (float) ($product->rating ?? 0),
+                    ];
+                })->values(),
+            ];
+        });
+
+        $totalSellers = $mapped->count();
+        $verifiedSellers = $mapped->filter(fn ($s) => $s['display_status'] === 'Verified')->count();
+        $totalTransactions = \App\Models\Order::count();
+        $totalMarketRevenue = (float) \App\Models\Order::where('status', 'completed')->sum('total');
+
+        return response()->json([
+            'stats' => [
+                'total_sellers' => $totalSellers,
+                'verified_sellers' => $verifiedSellers,
+                'total_transactions' => $totalTransactions,
+                'total_revenue' => $totalMarketRevenue,
+            ],
+            'sellers' => $mapped,
         ]);
     }
 }

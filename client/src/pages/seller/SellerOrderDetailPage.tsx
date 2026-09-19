@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Printer } from 'lucide-react';
 import Layout from '../../components/Layout';
 import api from '../../lib/axios';
 import { useAuth } from '../../context/AuthContext';
@@ -110,8 +109,7 @@ export default function SellerOrderDetailPage() {
             to={`${basePath}/orders`}
             className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-brand"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to orders
+            ← Back to orders
           </Link>
 
           <button
@@ -119,7 +117,6 @@ export default function SellerOrderDetailPage() {
             onClick={handlePrint}
             className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 font-semibold text-white hover:bg-brand-dark transition"
           >
-            <Printer className="h-4 w-4" />
             Print Invoice
           </button>
         </div>

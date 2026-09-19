@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, MapPin, Star, CheckCircle, AlertTriangle } from 'lucide-react';
 import api from '../../lib/axios';
 import QuantitySelector from '../../components/customer/QuantitySelector';
 import { useCart } from '../../context/CartContext';
@@ -114,8 +113,7 @@ export default function ProductDetailPage() {
         to="/customer"
         className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-brand"
       >
-        <ArrowLeft className="h-4 w-4" />
-        Back to marketplace
+        ← Back to marketplace
       </Link>
 
       <div className="grid gap-8 rounded-3xl bg-white p-6 shadow-card lg:grid-cols-2 lg:p-8">
@@ -140,26 +138,22 @@ export default function ProductDetailPage() {
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-500">
               <Link
                 to={`/customer/shops/${product.farm_id}`}
-                className="flex items-center gap-1 font-semibold text-slate-700 hover:text-brand transition hover:underline"
+                className="flex items-center gap-1.5 font-semibold text-slate-700 hover:text-brand transition hover:underline"
               >
-                <MapPin className="h-4 w-4 text-slate-400" />
                 {farmName}
                 {isVerified && (
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-100 ml-1">
-                    <CheckCircle className="h-3 w-3 fill-emerald-500 text-white" />
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-100 ml-1">
                     Verified Farm
                   </span>
                 )}
                 {isExpired && (
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700 border border-rose-100 ml-1">
-                    <AlertTriangle className="h-3 w-3 text-rose-500" />
+                  <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700 border border-rose-100 ml-1">
                     Permit Expired
                   </span>
                 )}
               </Link>
               <span className="text-slate-300">|</span>
-              <span className="flex items-center gap-1">
-                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
                 {displayRating(product.rating)} rating
               </span>
             </div>
@@ -220,9 +214,9 @@ export default function ProductDetailPage() {
               type="button"
               disabled={availableSizes.length === 0 || quantity > getStockForSize(size)}
               onClick={() => handleAddToCart(false)}
-              className="flex-1 rounded-full bg-brand px-6 py-3 font-bold text-white shadow-lg shadow-brand/25 transition hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
-              {added ? '✓ Added to Cart' : 'Add to Cart'}
+              {added ? 'Added to Cart' : 'Add to Cart'}
             </button>
             <button
               type="button"

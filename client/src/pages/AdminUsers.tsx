@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../lib/axios';
 import { useAuth } from '../context/AuthContext';
 import AdminLayout from '../layouts/AdminLayout';
+import SearchIcon from '../components/common/SearchIcon';
 
 type User = {
   id: number;
@@ -102,12 +103,12 @@ const AdminUsers = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="rounded-3xl border border-emerald-900 bg-emerald-950 p-6 text-emerald-100 shadow-sm">
-          <p className="text-sm uppercase tracking-[0.2em] text-emerald-300">User Management</p>
-          <h1 className="mt-3 text-3xl font-semibold">System user registry</h1>
-          <p className="mt-2 max-w-2xl text-slate-300">
-            View detailed profiles of registered sellers, verified riders, and administrative managers of PoultryLink.
-          </p>
+        <div
+          className="rounded-3xl p-6 text-white shadow-sm"
+          style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
+        >
+          <p className="text-sm uppercase tracking-[0.2em] text-emerald-100 font-semibold">User Management</p>
+          <h1 className="mt-2 text-3xl font-semibold">System user registry</h1>
         </div>
 
         {/* User List Card */}
@@ -117,18 +118,23 @@ const AdminUsers = () => {
               <p className="text-sm text-slate-500">System registry listing</p>
               <h2 className="text-2xl font-semibold text-slate-900">Registered Users ({filteredUsers.length})</h2>
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Search users..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-500"
-              />
+            <div className="flex gap-2 flex-wrap items-center">
+              <div className="relative flex items-center min-w-[240px]">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <SearchIcon className="h-4 w-4 text-slate-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-500"
+                />
+              </div>
               <button
                 onClick={fetchUsers}
                 disabled={loading}
-                className="rounded-2xl bg-emerald-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-900 disabled:opacity-60"
+                className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60"
               >
                 {loading ? 'Refreshing...' : 'Refresh'}
               </button>

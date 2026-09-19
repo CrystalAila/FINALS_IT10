@@ -408,7 +408,7 @@ const CreateProduct: React.FC = () => {
           <button
             type="submit"
             disabled={saving}
-            className="rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-brand/25 transition hover:bg-brand-dark disabled:opacity-60"
+            className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
           >
             {saving ? 'Saving product...' : isEdit ? 'Update product' : 'Save product'}
           </button>

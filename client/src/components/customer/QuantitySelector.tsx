@@ -1,5 +1,3 @@
-import { Minus, Plus } from 'lucide-react';
-
 type QuantitySelectorProps = {
   value: number;
   onChange: (value: number) => void;
@@ -13,19 +11,19 @@ export default function QuantitySelector({ value, onChange, min = 1, max = 99 }:
       <button
         type="button"
         onClick={() => onChange(Math.max(min, value - 1))}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 transition hover:bg-gray-100"
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 transition hover:bg-gray-100 font-bold text-base"
         aria-label="Decrease quantity"
       >
-        <Minus className="h-4 w-4" />
+        -
       </button>
       <span className="min-w-[2rem] text-center font-semibold">{value}</span>
       <button
         type="button"
         onClick={() => onChange(Math.min(max, value + 1))}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 transition hover:bg-gray-100"
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 transition hover:bg-gray-100 font-bold text-base"
         aria-label="Increase quantity"
       >
-        <Plus className="h-4 w-4" />
+        +
       </button>
     </div>
   );

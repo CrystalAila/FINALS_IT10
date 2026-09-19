@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import api from '../../lib/axios';
 import type { Product } from '../../types/marketplace';
 import { formatPrice, priceRange } from '../../types/marketplace';
+import { SearchIcon } from '../../components/common/SearchIcon';
 
 const MyListings: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchProducts();
@@ -24,6 +26,16 @@ const MyListings: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return products;
+    return products.filter((p) =>
+      p.name.toLowerCase().includes(q) ||
+      p.category.toLowerCase().includes(q) ||
+      (p.farm_origin && p.farm_origin.toLowerCase().includes(q))
+    );
+  }, [products, searchQuery]);
 
   const getCategoryLabel = (cat: string) => {
     switch (cat) {
@@ -42,18 +54,29 @@ const MyListings: React.FC = () => {
 
   return (
     <Layout>
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-brand">My listings</p>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-900">Manage your products</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-600">Update stock, prices, and availability for the farm goods you sell.</p>
+          <h1 className="mt-2 text-3xl font-semibold text-slate-900">Manage Products</h1>
         </div>
         <Link
           to="/seller/listings/new"
-          className="inline-flex items-center justify-center rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-brand/25 transition hover:bg-brand-dark"
+          className="inline-flex items-center justify-center rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
           Create New Product
         </Link>
+      </div>
+
+      {/* Real-time search bar */}
+      <div className="mb-6 flex max-w-md items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search products by name, category, origin..."
+          className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+        />
+        <SearchIcon className="h-4 w-4 text-slate-400 flex-shrink-0" />
       </div>
 
       {error && (
@@ -65,6 +88,17 @@ const MyListings: React.FC = () => {
       ) : products.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-slate-300 p-12 text-center bg-white">
           <p className="text-slate-500">No listings found. Create one above!</p>
+        </div>
+      ) : filteredProducts.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-slate-300 p-12 text-center bg-white">
+          <p className="text-slate-500">No products match your search.</p>
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            className="mt-2 text-sm font-semibold text-brand hover:underline"
+          >
+            Clear search
+          </button>
         </div>
       ) : (
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
@@ -78,7 +112,7 @@ const MyListings: React.FC = () => {
           </div>
 
           <div className="divide-y divide-slate-200">
-            {products.map((item) => (
+            {filteredProducts.map((item) => (
               <div key={item.id} className="grid gap-4 px-6 py-5 text-sm grid-cols-2 sm:grid-cols-[0.8fr_2.5fr_2fr_1.5fr_1fr_1fr] items-center">
                 <div className="hidden sm:block h-12 w-12 overflow-hidden rounded-xl bg-slate-100 border border-slate-200">
                   <img

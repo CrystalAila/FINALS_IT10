@@ -18,24 +18,25 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ user, logout }) => {
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(`${path}/`);
 
   const navItems = [
-    { path: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
-    { path: '/admin/users', label: 'User Management', icon: '👥' },
-    { path: '/admin/permits', label: 'Permits Verifications', icon: '✓' },
-    { path: '/admin/market', label: 'Market Monitoring', icon: '📈' },
-    { path: '/admin/reports', label: 'Reports', icon: '📋' },
-    { path: '/admin/logs', label: 'Audit Logs', icon: '📝' },
-    { path: '/admin/settings', label: 'System Settings', icon: '⚙️' },
+    { path: '/admin/dashboard', label: 'Dashboard' },
+    { path: '/admin/shares', label: 'Admin Shares (5%)' },
+    { path: '/admin/users', label: 'User Management' },
+    { path: '/admin/permits', label: 'Permits Verifications' },
+    { path: '/admin/market', label: 'Market Monitoring' },
+    { path: '/admin/reports', label: 'Reports' },
+    { path: '/admin/logs', label: 'Audit Logs' },
+    { path: '/admin/settings', label: 'System Settings' },
   ];
 
   return (
-    <aside className="w-72 border-r border-emerald-900 bg-emerald-950 text-emerald-100 px-5 py-6 shadow-sm flex flex-col h-screen sticky top-0">
+    <aside
+      className="w-72 border-r border-emerald-900/30 text-white px-5 py-6 shadow-sm flex flex-col h-screen sticky top-0"
+      style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
+    >
       {/* Logo */}
-      <div className="mb-10 flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-emerald-800 text-white text-2xl font-bold">🐓</div>
-        <div>
-          <p className="text-lg font-semibold text-white">Poultry Link</p>
-          <p className="text-xs text-emerald-200">Admin Panel</p>
-        </div>
+      <div className="mb-10 px-2">
+        <p className="text-xl font-bold tracking-tight text-white">Poultry Link</p>
+        <p className="text-xs text-emerald-100 font-medium">Admin Panel</p>
       </div>
 
       {/* Navigation */}
@@ -44,13 +45,12 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ user, logout }) => {
           <Link
             key={item.path}
             to={item.path}
-            className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${
+            className={`flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition ${
               isActive(item.path)
-                ? 'bg-emerald-800 text-white shadow-md'
-                : 'text-emerald-100 hover:bg-emerald-900'
+                ? 'bg-white/20 text-white font-semibold shadow-md'
+                : 'text-emerald-50 hover:bg-white/10 hover:text-white'
             }`}
           >
-            <span className="text-lg">{item.icon}</span>
             <span>{item.label}</span>
           </Link>
         ))}
@@ -58,15 +58,15 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ user, logout }) => {
 
       {/* User Info */}
       <div className="mt-10 space-y-4">
-        <div className="rounded-3xl bg-emerald-900 p-4">
-          <p className="text-xs uppercase tracking-wider text-emerald-300">Current Admin</p>
+        <div className="rounded-3xl bg-white/15 p-4">
+          <p className="text-xs uppercase tracking-wider text-emerald-100">Current Admin</p>
           <p className="mt-2 font-semibold text-white capitalize">{user?.fullname}</p>
         </div>
 
         <button
           type="button"
           onClick={() => logout()}
-          className="w-full rounded-2xl border border-emerald-700 bg-emerald-900/50 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-900"
+          className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
         >
           Logout
         </button>

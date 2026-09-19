@@ -110,7 +110,7 @@ export default function SalesReport() {
     );
   }
 
-  const maxCategoryRevenue = Math.max(...categories.map((c) => Number(c.revenue)), 1);
+  const totalRev = Number(summary.total_revenue);
 
   return (
     <Layout>
@@ -146,11 +146,18 @@ export default function SalesReport() {
           <div className="space-y-6">
             {categories.map((c) => {
               const rev = Number(c.revenue);
-              const percentage = (rev / maxCategoryRevenue) * 100;
+              const percentage = totalRev > 0 ? (rev / totalRev) * 100 : 0;
               return (
                 <div key={c.category} className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="font-semibold text-slate-700">{getCategoryLabel(c.category)}</span>
+                    <span className="font-semibold text-slate-700">
+                      {getCategoryLabel(c.category)}
+                      {totalRev > 0 && rev > 0 && (
+                        <span className="ml-2 text-xs font-normal text-slate-400">
+                          ({percentage.toFixed(0)}%)
+                        </span>
+                      )}
+                    </span>
                     <span className="font-bold text-slate-900">{formatPrice(rev)}</span>
                   </div>
                   <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -178,12 +185,12 @@ export default function SalesReport() {
                     <img src={p.image || 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=100'} alt={p.name} className="h-full w-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-900 truncate text-sm">{p.name}</p>
+                    <p className="font-semibold text-slate-900 truncate text-sm capitalize">{p.name}</p>
                     <p className="text-xs text-slate-400 capitalize">{getCategoryLabel(p.category)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-slate-900 text-sm">{formatPrice(p.revenue)}</p>
-                    <p className="text-xs text-slate-500">{p.qty_sold} units sold</p>
+                    <p className="font-bold text-slate-900 text-sm">{formatPrice(Number(p.revenue))}</p>
+                    <p className="text-xs text-slate-500">{p.qty_sold} {p.qty_sold === 1 ? 'unit' : 'units'} sold</p>
                   </div>
                 </div>
               ))}
@@ -215,7 +222,7 @@ export default function SalesReport() {
                       <td className="py-4 text-slate-600">{t.date}</td>
                       <td className="py-4 text-slate-900">{t.customer_name}</td>
                       <td className="py-4 text-center text-slate-700">{t.items_count}</td>
-                      <td className="py-4 text-right font-bold text-slate-950">{formatPrice(t.total)}</td>
+                      <td className="py-4 text-right font-bold text-slate-950">{formatPrice(Number(t.total))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -227,3 +234,4 @@ export default function SalesReport() {
     </Layout>
   );
 }
+

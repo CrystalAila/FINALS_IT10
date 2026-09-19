@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../lib/axios';
+import SearchIcon from '../components/common/SearchIcon';
 
 type LogEntry = {
   id: number;
@@ -43,27 +44,31 @@ const AdminLogs: React.FC = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="rounded-3xl border border-emerald-900 bg-emerald-950 p-6 text-emerald-100 shadow-sm">
-          <p className="text-sm uppercase tracking-[0.2em] text-emerald-300">Audit Logs</p>
-          <h1 className="mt-3 text-3xl font-semibold">System Activity Trail</h1>
-          <p className="mt-2 max-w-2xl text-slate-300">
-            Review login/logout activities, admin actions, system changes, and user management events.
-          </p>
+        <div
+          className="rounded-3xl p-6 text-white shadow-sm"
+          style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
+        >
+          <p className="text-sm uppercase tracking-[0.2em] text-emerald-100 font-semibold">Audit Logs</p>
+          <h1 className="mt-2 text-3xl font-semibold">System Activity Trail</h1>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div>
               <p className="text-sm text-slate-500">Recent activity</p>
               <h3 className="mt-1 text-2xl font-semibold text-slate-900">Audit Trail</h3>
             </div>
-            <input
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-500"
-              placeholder="Search logs by user or activity"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              style={{ maxWidth: 320 }}
-            />
+            <div className="relative flex items-center min-w-[240px] max-w-sm">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <SearchIcon className="h-4 w-4 text-slate-400" />
+              </div>
+              <input
+                className="w-full rounded-2xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-500"
+                placeholder="Search logs by user or activity"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              />
+            </div>
           </div>
 
           <div style={{ overflowX: 'auto' }}>

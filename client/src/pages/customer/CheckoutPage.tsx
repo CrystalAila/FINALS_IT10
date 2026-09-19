@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Plus } from 'lucide-react';
 import api from '../../lib/axios';
 import Modal from '../../components/customer/Modal';
 import { useCart } from '../../context/CartContext';
@@ -136,8 +135,8 @@ export default function CheckoutPage() {
   if (success) {
     return (
       <div className="mx-auto max-w-lg rounded-3xl bg-white p-12 text-center shadow-card">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl">
-          ✓
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-sm font-bold text-green-700 uppercase tracking-wider">
+          Done
         </div>
         <h2 className="text-2xl font-bold text-gray-900">Order Placed!</h2>
         <p className="mt-2 text-gray-500">
@@ -175,8 +174,7 @@ export default function CheckoutPage() {
         to="/customer/cart"
         className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-brand"
       >
-        <ArrowLeft className="h-4 w-4" />
-        Back to cart
+        ← Back to cart
       </Link>
 
       <h1 className="text-2xl font-bold text-gray-900">Checkout</h1>
@@ -228,15 +226,13 @@ export default function CheckoutPage() {
             <button
               type="button"
               onClick={() => setAddressModalOpen(true)}
-              className="flex items-center gap-1 text-sm font-semibold text-brand hover:underline"
+              className="text-sm font-semibold text-brand hover:underline"
             >
-              <Plus className="h-4 w-4" />
-              {savedAddress ? 'Edit Address' : 'New Address'}
+              {savedAddress ? 'Edit Address' : '+ New Address'}
             </button>
           </div>
           {savedAddress ? (
-            <div className="flex gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4">
-              <MapPin className="mt-0.5 h-5 w-5 flex-shrink-0 text-brand" />
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
               <div className="text-sm">
                 <p className="font-semibold text-gray-900">{savedAddress.fullName}</p>
                 <p className="text-gray-600">{savedAddress.phone}</p>
@@ -323,7 +319,7 @@ export default function CheckoutPage() {
           type="button"
           onClick={handlePlaceOrder}
           disabled={placing}
-          className="mt-4 w-full rounded-full bg-red-600 py-3.5 text-lg font-bold text-white shadow-lg shadow-red-600/25 transition hover:bg-red-700 disabled:opacity-60"
+          className="mt-4 w-full rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
           {placing ? 'Placing Order...' : 'Place Order'}
         </button>
@@ -382,7 +378,7 @@ export default function CheckoutPage() {
           </div>
           <button
             type="submit"
-            className="w-full rounded-full bg-brand py-3 font-bold text-white hover:bg-brand-dark"
+            className="w-full rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
           >
             Save Address
           </button>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, AlertTriangle, CheckCircle2, LogOut, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/axios';
 
@@ -56,7 +55,6 @@ const SellerVerification: React.FC = () => {
     switch (user.status) {
       case 'pending':
         return {
-          icon: <Clock className="h-16 w-16 text-amber-500 animate-pulse" />,
           title: 'Verification Pending',
           bgClass: 'from-amber-50 to-orange-50 border-amber-200',
           textColor: 'text-amber-800',
@@ -65,7 +63,6 @@ const SellerVerification: React.FC = () => {
         };
       case 'under_review':
         return {
-          icon: <Clock className="h-16 w-16 text-orange-500 animate-pulse" />,
           title: 'Application Under Review',
           bgClass: 'from-orange-50 to-amber-50 border-orange-200',
           textColor: 'text-orange-800',
@@ -74,7 +71,6 @@ const SellerVerification: React.FC = () => {
         };
       case 'rejected':
         return {
-          icon: <AlertTriangle className="h-16 w-16 text-red-500" />,
           title: 'Application Rejected',
           bgClass: 'from-red-50 to-orange-50 border-red-200',
           textColor: 'text-red-800',
@@ -84,7 +80,6 @@ const SellerVerification: React.FC = () => {
       case 'suspended':
         const isExpired = farm?.permit_expiry_date ? new Date(farm.permit_expiry_date) < new Date() : false;
         return {
-          icon: <AlertTriangle className="h-16 w-16 text-red-500" />,
           title: isExpired ? 'Permit Expired / Suspended' : 'Account Suspended',
           bgClass: 'from-red-50 to-slate-100 border-red-200',
           textColor: 'text-red-900',
@@ -95,7 +90,6 @@ const SellerVerification: React.FC = () => {
         };
       default:
         return {
-          icon: <CheckCircle2 className="h-16 w-16 text-green-500" />,
           title: 'Verified',
           bgClass: 'from-green-50 to-emerald-50 border-green-200',
           textColor: 'text-green-800',
@@ -119,10 +113,6 @@ const SellerVerification: React.FC = () => {
 
         {/* Dynamic Status Presentation */}
         <div className={`mt-8 rounded-2xl border bg-gradient-to-br p-6 text-center flex flex-col items-center ${statusConfig.bgClass}`}>
-          <div className="mb-4">
-            {statusConfig.icon}
-          </div>
-          
           <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border ${statusConfig.badge}`}>
             {user.status ? user.status.toUpperCase().replace('_', ' ') : 'UNKNOWN'}
           </span>
@@ -152,30 +142,13 @@ const SellerVerification: React.FC = () => {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-slate-400 font-medium">Business Name</p>
-              <p className="font-semibold text-slate-800">{user.business_name || 'Not provided'}</p>
+              <p className="text-slate-400 font-medium">Shop Name</p>
+              <p className="font-semibold text-slate-800">{farm?.name || user.farm?.name || 'Not Configured'}</p>
             </div>
             <div>
-              <p className="text-slate-400 font-medium">Full Name</p>
-              <p className="font-semibold text-slate-800">{user.fullname}</p>
+              <p className="text-slate-400 font-medium">Business Location</p>
+              <p className="font-semibold text-slate-800">{farm?.location || user.farm?.location || 'Not Specified'}</p>
             </div>
-            {farm?.permit_issue_date && (
-              <div>
-                <p className="text-slate-400 font-medium">Permit Date Issued</p>
-                <p className="font-semibold text-slate-800">{new Date(farm.permit_issue_date).toLocaleDateString()}</p>
-              </div>
-            )}
-            {farm?.permit_expiry_date && (
-              <div>
-                <p className="text-slate-400 font-medium">Permit Expiry Date</p>
-                <p className="font-semibold text-slate-800 flex items-center gap-1.5">
-                  {new Date(farm.permit_expiry_date).toLocaleDateString()}
-                  {new Date(farm.permit_expiry_date) < new Date() && (
-                    <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700 font-bold animate-pulse">EXPIRED</span>
-                  )}
-                </p>
-              </div>
-            )}
             <div>
               <p className="text-slate-400 font-medium">Email Address</p>
               <p className="font-semibold text-slate-800">{user.email || 'None'}</p>
@@ -206,9 +179,8 @@ const SellerVerification: React.FC = () => {
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex-1 flex items-center justify-center gap-2 rounded-full bg-brand py-3 px-4 font-bold text-white shadow-lg shadow-brand/20 hover:bg-brand-dark transition disabled:opacity-60"
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               {refreshing ? 'Refreshing...' : 'Refresh Status'}
             </button>
             
@@ -216,7 +188,6 @@ const SellerVerification: React.FC = () => {
               onClick={handleLogout}
               className="flex-1 flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white hover:bg-slate-50 py-3 px-6 font-bold text-slate-700 transition"
             >
-              <LogOut className="h-4 w-4" />
               Sign Out
             </button>
           </div>

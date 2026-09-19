@@ -203,7 +203,7 @@ const GoogleRegisterComplete: React.FC = () => {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-full bg-brand py-3.5 font-bold text-white shadow-lg shadow-brand/25 transition hover:bg-brand-dark disabled:opacity-60"
+          className="w-full rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
           {loading ? 'Completing profile...' : 'Complete Profile & Register'}
         </button>
