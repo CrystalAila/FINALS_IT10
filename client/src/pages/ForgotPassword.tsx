@@ -51,9 +51,6 @@ export default function ForgotPassword() {
           >
             Reset Password
           </Link>
-          <p className="text-xs text-green-700">
-            Demo mode: token is shown here instead of email.
-          </p>
         </div>
       ) : (
         <form onSubmit={submit} className="mt-8 space-y-5">

@@ -1,14 +1,54 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../../lib/axios';
 import Modal from '../../components/customer/Modal';
 import { useCart } from '../../context/CartContext';
-import type { DeliveryAddress, DeliveryType, PaymentMethod, SavedAddress } from '../../types/marketplace';
-import { formatPrice } from '../../types/marketplace';
+import { useToast } from '../../context/ToastContext';
+import type { CartItem, DeliveryAddress, DeliveryType, PaymentMethod, SavedAddress } from '../../types/marketplace';
+import { formatPrice, formatQuantityWithUnit, formatUnitSuffix } from '../../types/marketplace';
 
 export default function CheckoutPage() {
-  const { items, subtotal, savedAddress, saveAddress, clearCart } = useCart();
+  const { toast } = useToast();
+  const { items: cartItems, savedAddress, saveAddress, removeItems } = useCart();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Load checkout items from navigation state or sessionStorage or fallback to cart
+  const [checkoutData] = useState<{ items: CartItem[]; isBuyNow: boolean; fromCart: boolean }>(() => {
+    const navState = location.state as { checkoutItems?: CartItem[]; isBuyNow?: boolean; fromCart?: boolean } | null;
+    if (navState?.checkoutItems && navState.checkoutItems.length > 0) {
+      return {
+        items: navState.checkoutItems,
+        isBuyNow: Boolean(navState.isBuyNow),
+        fromCart: Boolean(navState.fromCart),
+      };
+    }
+    const sessionStr = sessionStorage.getItem('poultrylink_checkout');
+    if (sessionStr) {
+      try {
+        const parsed = JSON.parse(sessionStr);
+        if (parsed?.items?.length > 0) {
+          return {
+            items: parsed.items,
+            isBuyNow: Boolean(parsed.isBuyNow),
+            fromCart: Boolean(parsed.fromCart),
+          };
+        }
+      } catch (e) {
+        console.error('Failed to parse checkout session data', e);
+      }
+    }
+    // Fallback: entire cart
+    return {
+      items: cartItems,
+      isBuyNow: false,
+      fromCart: true,
+    };
+  });
+
+  const { items, isBuyNow, fromCart } = checkoutData;
+
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('pickup');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash_on_pickup');
   const [addressModalOpen, setAddressModalOpen] = useState(false);
@@ -17,6 +57,17 @@ export default function CheckoutPage() {
   const [success, setSuccess] = useState(false);
   const [orderId, setOrderId] = useState<number | null>(null);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+
+  // Calculate subtotal for the items being checked out
+  const subtotal = useMemo(
+    () => items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0),
+    [items],
+  );
+
+  const hasPerKilo = useMemo(
+    () => items.some((i) => i.unitType === 'per_kilo'),
+    [items],
+  );
 
   // Distance mock calculator matching backend
   const calculateDistanceMock = (origin: string, destination: string) => {
@@ -78,8 +129,8 @@ export default function CheckoutPage() {
     return (
       <div className="rounded-3xl bg-white p-12 text-center shadow-card">
         <p className="text-gray-500">Nothing to checkout.</p>
-        <Link to="/customer/cart" className="mt-4 inline-block text-brand hover:underline">
-          Go to cart
+        <Link to="/customer" className="mt-4 inline-block text-brand hover:underline">
+          Browse products
         </Link>
       </div>
     );
@@ -122,11 +173,20 @@ export default function CheckoutPage() {
         phone: savedAddress?.phone,
         notes: savedAddress ? `Recipient: ${savedAddress.fullName}` : undefined,
       });
-      clearCart();
+
+      // If ordered from cart, remove only the ordered items from the cart
+      if (fromCart && !isBuyNow) {
+        removeItems(items.map((i) => ({ productId: i.productId, size: i.size })));
+      }
+
+      sessionStorage.removeItem('poultrylink_checkout');
       setOrderId(res.data.order?.id ?? null);
       setSuccess(true);
+      toast.success('Order placed successfully!');
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Failed to place order. Please try again.');
+      const errMsg = err?.response?.data?.message ?? 'Failed to place order. Please try again.';
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setPlacing(false);
     }
@@ -139,27 +199,29 @@ export default function CheckoutPage() {
           Done
         </div>
         <h2 className="text-2xl font-bold text-gray-900">Order Placed!</h2>
-        <p className="mt-2 text-gray-500">
-          Your order has been submitted. Pay with cash on {deliveryType === 'pickup' ? 'pickup' : 'delivery'}.
+        <p className="mt-2 text-gray-500 text-sm">
+          {hasPerKilo
+            ? `Your order has been submitted. Because it contains variable-weight items, the seller will weigh them to confirm the final amount before delivery/pickup.`
+            : `Your order has been submitted. Pay with cash on ${deliveryType === 'pickup' ? 'pickup' : 'delivery'}.`}
         </p>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
           {orderId && (
             <Link
               to={`/customer/orders/${orderId}`}
-              className="inline-block rounded-full bg-brand px-8 py-3 font-bold text-white hover:bg-brand-dark"
+              className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark transition"
             >
               View Order Details
             </Link>
           )}
           <Link
             to="/customer/orders"
-            className="inline-block rounded-full border-2 border-brand px-8 py-3 font-bold text-brand hover:bg-brand/5"
+            className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-white border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:border-brand/40 hover:text-brand transition"
           >
             My Orders
           </Link>
           <Link
             to="/customer"
-            className="inline-block rounded-full px-8 py-3 font-semibold text-gray-600 hover:text-brand"
+            className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-white border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:border-brand/40 hover:text-brand transition"
           >
             Continue Shopping
           </Link>
@@ -170,12 +232,19 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <Link
-        to="/customer/cart"
-        className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-brand"
+      <button
+        type="button"
+        onClick={() => {
+          if (isBuyNow) {
+            navigate(-1);
+          } else {
+            navigate('/customer/cart');
+          }
+        }}
+        className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-brand cursor-pointer"
       >
-        ← Back to cart
-      </Link>
+        {isBuyNow ? '← Back to product' : '← Back to cart'}
+      </button>
 
       <h1 className="text-2xl font-bold text-gray-900">Checkout</h1>
 
@@ -279,20 +348,29 @@ export default function CheckoutPage() {
       {/* Order summary */}
       <section className="rounded-2xl bg-white p-6 shadow-card">
         <h2 className="mb-4 font-semibold text-gray-900">Order Summary</h2>
-        <ul className="space-y-2 text-sm text-gray-600">
+        <ul className="space-y-3 text-sm text-gray-600">
           {items.map((item) => (
-            <li key={`${item.productId}-${item.size}`} className="flex justify-between">
-              <span>
-                {item.name} × {item.quantity}
-              </span>
-              <span>{formatPrice(item.unitPrice * item.quantity)}</span>
+            <li key={`${item.productId}-${item.size}`} className="flex justify-between items-start">
+              <div>
+                <span className="font-medium text-gray-800">{item.name}</span>
+                <span className="text-gray-400 text-xs block">
+                  {formatQuantityWithUnit(item.quantity, item.unitType)} × {formatPrice(item.unitPrice)}{formatUnitSuffix(item.unitType)}
+                </span>
+              </div>
+              <span className="font-semibold text-gray-900">{formatPrice(item.unitPrice * item.quantity)}</span>
             </li>
           ))}
         </ul>
+
+        {hasPerKilo && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-800 leading-relaxed">
+            <span className="font-semibold">⚖️ Estimated Price Notice:</span> This order includes variable-weight items priced per kilo. The initial grand total is an estimate. The seller will weigh the items and update the final amount before fulfillment.
+          </div>
+        )}
         
         <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
           <div className="flex justify-between text-sm text-gray-600">
-            <span>Items Price (Subtotal)</span>
+            <span>Items Price {hasPerKilo ? '(Estimated Subtotal)' : '(Subtotal)'}</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
           
@@ -312,7 +390,9 @@ export default function CheckoutPage() {
         </div>
         
         <div className="mt-4 flex justify-between border-t border-gray-100 pt-4">
-          <span className="text-lg font-semibold text-gray-900">Total Price</span>
+          <span className="text-lg font-semibold text-gray-900">
+            {hasPerKilo ? 'Estimated Total Price' : 'Total Price'}
+          </span>
           <span className="text-xl font-bold text-brand">{formatPrice(totalPrice)}</span>
         </div>
         <button

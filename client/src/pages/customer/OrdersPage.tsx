@@ -24,8 +24,7 @@ export default function OrdersPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
-        <p className="text-sm text-gray-500">Track and view your order history</p>
+        <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
       </div>
 
       {error && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>}
@@ -50,7 +49,14 @@ export default function OrdersPage() {
                   <p className="text-sm text-gray-500">
                     {order.farm?.name ?? 'Farm'} · {new Date(order.created_at).toLocaleDateString()}
                   </p>
-                  <p className="mt-1 text-sm font-medium text-gray-800">{formatPrice(Number(order.total))}</p>
+                  <p className="mt-1 text-sm font-medium text-gray-800">
+                    {formatPrice(Number(order.total))}
+                    {order.status === 'awaiting_weighing' && (
+                      <span className="ml-2 text-xs text-amber-700 font-normal bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        Est. Total
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold ${ORDER_STATUS_COLORS[order.status]}`}>

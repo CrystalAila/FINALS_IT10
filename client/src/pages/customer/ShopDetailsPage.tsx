@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../../lib/axios';
 import ProductCard from '../../components/customer/ProductCard';
+import SellerLocationMap from '../../components/customer/SellerLocationMap';
 import type { Farm, Product } from '../../types/marketplace';
-import { displayRating } from '../../types/marketplace';
 
 export default function ShopDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -106,9 +106,6 @@ export default function ShopDetailsPage() {
               <span className="font-medium text-slate-600">
                 {farm.location || 'Capiz, Philippines'}
               </span>
-              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                {displayRating(farm.rating ?? 5.0)} rating
-              </span>
             </div>
             
             <p className="text-sm text-slate-600 max-w-xl">{farm.description}</p>
@@ -129,6 +126,16 @@ export default function ShopDetailsPage() {
           {isFavorited ? 'Shop Favorited' : 'Favorite Shop'}
         </button>
       </section>
+
+      {/* Seller Location & Map */}
+      <SellerLocationMap
+        name={farm.name}
+        latitude={farm.latitude}
+        longitude={farm.longitude}
+        fullAddress={farm.full_address}
+        location={farm.location}
+        cardTitle="Shop Location & Delivery Info"
+      />
 
       {/* Shop Products */}
       <section className="space-y-6">

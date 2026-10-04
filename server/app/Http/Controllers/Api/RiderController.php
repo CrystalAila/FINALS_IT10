@@ -130,4 +130,73 @@ class RiderController extends Controller
 
         return response()->json(['message' => 'Rider removed from registry.']);
     }
+
+    /**
+     * Update an existing rider in the registry.
+     */
+    public function update(Request $request, int $id)
+    {
+        $user = $request->user();
+        $farm = $user->farm;
+
+        if (!$farm) {
+            return response()->json(['message' => 'Farm not configured.'], 403);
+        }
+
+        $rider = Rider::where('farm_id', $farm->id)->findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'fullname' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:30'],
+            'username' => ['nullable', 'string', 'max:255', 'alpha_num', 'unique:users,username,' . $rider->user_id],
+            'password' => ['nullable', 'string', 'min:6'],
+            'photo' => ['nullable', 'image', 'max:2048'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        if ($request->hasFile('photo')) {
+            if ($rider->photo_path) {
+                Storage::disk('public')->delete($rider->photo_path);
+            }
+            $rider->photo_path = $request->file('photo')->store('riders', 'public');
+        }
+
+        $rider->fullname = $request->input('fullname');
+        $rider->phone = $request->input('phone');
+        $rider->save();
+
+        if ($rider->user_id) {
+            $riderUser = \App\Models\User::find($rider->user_id);
+            if ($riderUser) {
+                $riderUser->fullname = $request->input('fullname');
+                $riderUser->phone = $request->input('phone');
+                if ($request->filled('username')) {
+                    $riderUser->username = $request->input('username');
+                }
+                if ($request->filled('password')) {
+                    $riderUser->password = \Illuminate\Support\Facades\Hash::make($request->input('password'));
+                }
+                $riderUser->save();
+            }
+        }
+
+        if ($rider->photo_path) {
+            if (filter_var($rider->photo_path, FILTER_VALIDATE_URL)) {
+                $rider->photo_url = $rider->photo_path;
+            } else {
+                $rider->photo_url = asset('storage/' . $rider->photo_path);
+            }
+        } else {
+            $rider->photo_url = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80';
+        }
+        $rider->load('user');
+
+        ActivityLogService::log('Rider updated in registry: ' . $rider->fullname, $user->id);
+
+        return response()->json(['rider' => $rider, 'message' => 'Rider updated successfully.']);
+    }
 }
+

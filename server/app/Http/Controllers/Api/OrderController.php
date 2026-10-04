@@ -56,7 +56,7 @@ class OrderController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.size' => ['required', 'in:small,medium,large,jumbo'],
-            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
             'delivery_type' => ['required', 'in:pickup,delivery'],
             'payment_method' => ['required', 'in:cash_on_pickup,cash_on_delivery'],
             'address_line' => ['nullable', 'string', 'max:255'],
@@ -84,6 +84,7 @@ class OrderController extends Controller
                 $total = 0;
                 $farmId = null;
                 $lineItems = [];
+                $hasVariableWeight = false;
 
                 foreach ($data['items'] as $item) {
                     $product = Product::with('farm')->findOrFail($item['product_id']);
@@ -93,7 +94,7 @@ class OrderController extends Controller
                     }
 
                     $sizeStock = $product->stockForSize($item['size']);
-                    if ($sizeStock < $item['quantity']) {
+                    if ($sizeStock < ceil($item['quantity'])) {
                         throw new \RuntimeException("Insufficient stock for {$product->name} ({$item['size']})");
                     }
 
@@ -103,20 +104,29 @@ class OrderController extends Controller
                         throw new \RuntimeException('All items must be from the same farm');
                     }
 
+                    $unitType = $product->unit_type ?? 'per_head';
+                    if ($unitType === 'per_kilo') {
+                        $hasVariableWeight = true;
+                    }
+
                     $unitPrice = $product->priceForSize($item['size']);
-                    $subtotal = $unitPrice * $item['quantity'];
+                    $subtotal = round($unitPrice * $item['quantity'], 2);
                     $total += $subtotal;
 
                     $lineItems[] = [
                         'product_id' => $product->id,
                         'size' => $item['size'],
+                        'unit_type' => $unitType,
+                        'estimated_quantity' => $item['quantity'],
+                        'actual_quantity' => ($unitType === 'per_kilo') ? null : $item['quantity'],
                         'quantity' => $item['quantity'],
                         'unit_price' => $unitPrice,
                         'subtotal' => $subtotal,
                     ];
 
-                    $product->decrement('stock_' . $item['size'], $item['quantity']);
-                    $product->decrement('stock', $item['quantity']);
+                    $decrementCount = max(1, (int) ceil($item['quantity']));
+                    $product->decrement('stock_' . $item['size'], $decrementCount);
+                    $product->decrement('stock', $decrementCount);
                 }
 
                 $shippingFee = 0;
@@ -129,10 +139,12 @@ class OrderController extends Controller
                 }
                 $total += $shippingFee;
 
+                $initialStatus = $hasVariableWeight ? 'awaiting_weighing' : 'pending';
+
                 $order = Order::create([
                     'customer_id' => $request->user()->id,
                     'farm_id' => $farmId,
-                    'status' => 'pending',
+                    'status' => $initialStatus,
                     'delivery_type' => $data['delivery_type'],
                     'payment_method' => $data['payment_method'],
                     'total' => $total,
@@ -200,6 +212,67 @@ class OrderController extends Controller
     }
 
     /**
+     * Submit measured actual weights for variable-weight items and recalculate price.
+     */
+    public function weighOrder(Request $request, int $id)
+    {
+        $user = $request->user();
+        $farm = $user ? $user->farm : null;
+
+        if ($user && $user->role !== 'admin' && !$farm) {
+            return response()->json(['message' => 'Farm not configured.'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'items' => ['required', 'array', 'min:1'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $query = Order::with('items');
+        if ($farm && $user->role !== 'admin') {
+            $query->where('farm_id', $farm->id);
+        }
+        $order = $query->findOrFail($id);
+
+        DB::transaction(function () use ($order, $request) {
+            $itemsSubtotal = 0;
+            $rawItems = $request->input('items', []);
+            $inputs = collect($rawItems)->mapWithKeys(function ($it) {
+                $key = $it['id'] ?? $it['item_id'] ?? null;
+                return $key ? [$key => $it] : [];
+            });
+
+            foreach ($order->items as $item) {
+                if ($inputs->has($item->id)) {
+                    $entry = $inputs->get($item->id);
+                    $actualQty = (float) ($entry['actual_quantity'] ?? $entry['actual_weight'] ?? $item->quantity);
+                    $item->actual_quantity = $actualQty;
+                    $item->quantity = $actualQty;
+                    $item->subtotal = round($actualQty * (float) $item->unit_price, 2);
+                    $item->save();
+                }
+                $itemsSubtotal += (float) $item->subtotal;
+            }
+
+            $order->total = round($itemsSubtotal + (float) ($order->shipping_fee ?? 0), 2);
+            $order->status = 'price_confirmed';
+            $order->save();
+        });
+
+        if ($user) {
+            ActivityLogService::log("Order #{$order->id} weighed and price confirmed. Total: ₱{$order->total}", $user->id);
+        }
+
+        return response()->json([
+            'message' => 'Order weights and price confirmed successfully.',
+            'order' => $order->fresh()->load(['customer', 'items.product', 'rider', 'farm']),
+        ]);
+    }
+
+    /**
      * Update the status of an order.
      */
     public function updateStatus(Request $request, int $id)
@@ -212,7 +285,7 @@ class OrderController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'status' => ['required', 'in:pending,confirmed,processing,ready,completed,cancelled'],
+            'status' => ['required', 'in:pending,awaiting_weighing,price_confirmed,confirmed,processing,ready,completed,cancelled'],
         ]);
 
         if ($validator->fails()) {

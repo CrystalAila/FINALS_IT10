@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../lib/axios';
+import { useToast } from '../context/ToastContext';
 
 interface SystemSettingsData {
   minSellerCommission: number;
@@ -13,6 +14,7 @@ interface SystemSettingsData {
 }
 
 const AdminSettings: React.FC = () => {
+  const toast = useToast();
   const [settings, setSettings] = useState<SystemSettingsData>({
     minSellerCommission: 5,
     maxSellerCommission: 10,
@@ -93,15 +95,11 @@ const AdminSettings: React.FC = () => {
           maintenanceMode: Boolean(res.data.settings.maintenanceMode),
         });
       }
-      setMessage({ type: 'success', text: 'Settings updated and saved successfully in real time!' });
-
-      setTimeout(() => {
-        setMessage((prev) => (prev?.type === 'success' ? null : prev));
-      }, 5000);
+      toast.success('Settings saved successfully.');
     } catch (err: any) {
       console.error('Failed to save settings:', err);
       const errDetail = err.response?.data?.message || 'Failed to save system settings.';
-      setMessage({ type: 'error', text: errDetail });
+      toast.error(errDetail);
     } finally {
       setSaving(false);
     }
@@ -114,7 +112,6 @@ const AdminSettings: React.FC = () => {
 
     try {
       setResetting(true);
-      setMessage(null);
       const res = await api.post('/admin/settings/reset');
       if (res.data?.settings) {
         setSettings({
@@ -127,10 +124,10 @@ const AdminSettings: React.FC = () => {
           maintenanceMode: Boolean(res.data.settings.maintenanceMode),
         });
       }
-      setMessage({ type: 'success', text: 'Settings successfully restored to platform defaults.' });
+      toast.success('Settings restored to defaults.');
     } catch (err) {
       console.error('Failed to reset settings:', err);
-      setMessage({ type: 'error', text: 'Failed to reset settings.' });
+      toast.error('Failed to reset settings.');
     } finally {
       setResetting(false);
     }
@@ -155,40 +152,8 @@ const AdminSettings: React.FC = () => {
           className="rounded-3xl p-6 text-white shadow-sm"
           style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
         >
-          <p className="text-sm uppercase tracking-[0.2em] text-emerald-100 font-semibold">System Settings</p>
-          <h1 className="mt-2 text-3xl font-semibold">Marketplace Configuration</h1>
+          <h1 className="text-2xl font-bold">System Settings</h1>
         </div>
-
-        {/* Feedback Alert Banner */}
-        {message && (
-          <div
-            className={`rounded-2xl p-4 text-sm font-medium flex items-center justify-between transition-all ${
-              message.type === 'success'
-                ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
-                : 'bg-red-50 text-red-900 border border-red-200'
-            }`}
-          >
-            <div>
-              <span>{message.text}</span>
-            </div>
-            <button
-              onClick={() => setMessage(null)}
-              className="text-xs font-bold opacity-60 hover:opacity-100"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* Maintenance Warning if active */}
-        {settings.maintenanceMode && (
-          <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-red-900">
-            <p className="font-bold text-base">Marketplace is Currently in Maintenance Mode</p>
-            <p className="text-xs text-red-700 mt-0.5">
-              Customers and sellers may experience restricted transaction features while maintenance mode remains active.
-            </p>
-          </div>
-        )}
 
         {/* Platform Policies */}
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -257,88 +222,6 @@ const AdminSettings: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Notification Settings */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-slate-900">Notification Settings</h2>
-            <p className="text-xs text-slate-500">Channels for system alerts and marketplace notifications</p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-slate-900">Enable All Notifications</p>
-                <p className="text-xs text-slate-500 mt-0.5">Master toggle to transmit alerts for marketplace orders, disputes, and permits.</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.notificationsEnabled}
-                  onChange={(e) => handleSettingChange('notificationsEnabled', e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-              </label>
-            </div>
-
-            {settings.notificationsEnabled && (
-              <div className="grid gap-3 sm:grid-cols-2 pl-2">
-                <div className="rounded-2xl border border-slate-100 bg-white p-4 flex items-center justify-between shadow-xs">
-                  <div>
-                    <p className="font-medium text-slate-900 text-sm">Email Notifications</p>
-                    <p className="text-xs text-slate-500">Send transactional digests via email</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={settings.emailNotifications}
-                    onChange={(e) => handleSettingChange('emailNotifications', e.target.checked)}
-                    className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
-                  />
-                </div>
-
-                <div className="rounded-2xl border border-slate-100 bg-white p-4 flex items-center justify-between shadow-xs">
-                  <div>
-                    <p className="font-medium text-slate-900 text-sm">SMS Notifications</p>
-                    <p className="text-xs text-slate-500">Send high-priority alerts via SMS</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={settings.smsNotifications}
-                    onChange={(e) => handleSettingChange('smsNotifications', e.target.checked)}
-                    className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* System Status */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-slate-900">System Status</h2>
-            <p className="text-xs text-slate-500">Emergency operational toggles</p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 flex items-center justify-between">
-            <div>
-              <p className="font-semibold text-slate-900">Maintenance Mode</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Temporarily pause marketplace ordering while maintaining administrator dashboard access.
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.maintenanceMode}
-                onChange={(e) => handleSettingChange('maintenanceMode', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
-            </label>
           </div>
         </div>
 

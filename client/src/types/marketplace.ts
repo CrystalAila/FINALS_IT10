@@ -1,4 +1,41 @@
 export type ProductSize = 'small' | 'medium' | 'large' | 'jumbo';
+export type UnitType = 'per_kilo' | 'per_head' | 'per_tray' | 'per_piece';
+
+export const UNIT_LABELS: Record<UnitType, string> = {
+  per_kilo: 'Per Kilo (kg)',
+  per_head: 'Per Head',
+  per_tray: 'Per Tray',
+  per_piece: 'Per Piece',
+};
+
+export const UNIT_SUFFIXES: Record<UnitType, string> = {
+  per_kilo: '/ kg',
+  per_head: '/ head',
+  per_tray: '/ tray',
+  per_piece: '/ pc',
+};
+
+export function formatUnitSuffix(unitType?: string | null): string {
+  if (!unitType) return '';
+  return UNIT_SUFFIXES[unitType as UnitType] || `/${unitType.replace('per_', ' ')}`;
+}
+
+export function formatQuantityWithUnit(qty: number | string, unitType?: string | null): string {
+  const num = Number(qty || 0);
+  const formattedNum = num % 1 === 0 ? num.toString() : num.toFixed(2).replace(/\.?0+$/, '');
+  switch (unitType) {
+    case 'per_kilo':
+      return `${formattedNum} kg`;
+    case 'per_head':
+      return `${formattedNum} ${num === 1 ? 'head' : 'heads'}`;
+    case 'per_tray':
+      return `${formattedNum} ${num === 1 ? 'tray' : 'trays'}`;
+    case 'per_piece':
+      return `${formattedNum} ${num === 1 ? 'pc' : 'pcs'}`;
+    default:
+      return `${formattedNum}`;
+  }
+}
 
 export type Farm = {
   id: number;
@@ -11,6 +48,9 @@ export type Farm = {
   is_permit_expired?: boolean;
   permit_expiry_date?: string;
   logo?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  full_address?: string | null;
 };
 
 export type Product = {
@@ -20,6 +60,8 @@ export type Product = {
   description?: string;
   image?: string | null;
   category: string;
+  unit_type?: UnitType;
+  increment_step?: string | number;
   price_small: string | number;
   price_medium: string | number;
   price_large: string | number;
@@ -42,6 +84,9 @@ export type CartItem = {
   farmId: number;
   farmName: string;
   farmLocation?: string;
+  category?: string;
+  unitType?: UnitType;
+  incrementStep?: number;
   size: ProductSize;
   quantity: number;
   unitPrice: number;
@@ -96,7 +141,61 @@ export function displayRating(rating: string | number): string {
   return Number(rating).toFixed(1);
 }
 
-export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'ready' | 'out_for_delivery' | 'completed' | 'cancelled';
+const DEFAULT_CATEGORY_IMAGES: Record<string, string> = {
+  eggs: 'https://images.unsplash.com/photo-1582722879805-a7e02e48a2e8?w=600&h=450&fit=crop',
+  native: '/hero-poultry.jpg',
+  live_poultry: '/hero-poultry.jpg',
+  dressed_chicken: 'https://images.unsplash.com/photo-1598103442097-8b0287c7d889?w=600&h=450&fit=crop',
+  dressed_meat: 'https://images.unsplash.com/photo-1598103442097-8b0287c7d889?w=600&h=450&fit=crop',
+  broiler: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=600&h=450&fit=crop',
+};
+
+export function getProductCategoryDefaultImage(category?: string): string {
+  if (category && DEFAULT_CATEGORY_IMAGES[category]) {
+    return DEFAULT_CATEGORY_IMAGES[category];
+  }
+  return DEFAULT_CATEGORY_IMAGES.broiler;
+}
+
+export function resolveProductImage(image?: string | null, category?: string): string {
+  if (!image || !image.trim() || image.includes('1612817288484-6f916006741a')) {
+    return getProductCategoryDefaultImage(category);
+  }
+
+  let resolved = image.trim();
+
+  // If this is a local blob or data preview, return immediately
+  if (resolved.startsWith('blob:') || resolved.startsWith('data:')) {
+    return resolved;
+  }
+
+  // Get backend base URL (e.g. http://localhost:8000)
+  const backendBase = (import.meta.env.VITE_API_BASE || 'http://localhost:8000/api').replace(/\/api\/?$/, '');
+
+  // Normalize legacy localhost URLs without port 8000 or relative paths
+  if (resolved.startsWith('http://localhost/storage/')) {
+    resolved = resolved.replace('http://localhost/storage/', `${backendBase}/storage/`);
+  } else if (resolved.startsWith('http://127.0.0.1/storage/')) {
+    resolved = resolved.replace('http://127.0.0.1/storage/', `${backendBase}/storage/`);
+  } else if (resolved.startsWith('/storage/')) {
+    resolved = `${backendBase}${resolved}`;
+  } else if (resolved.startsWith('storage/')) {
+    resolved = `${backendBase}/${resolved}`;
+  }
+
+  return resolved;
+}
+
+export type OrderStatus =
+  | 'pending'
+  | 'awaiting_weighing'
+  | 'price_confirmed'
+  | 'confirmed'
+  | 'processing'
+  | 'ready'
+  | 'out_for_delivery'
+  | 'completed'
+  | 'cancelled';
 
 export type Rider = {
   id: number;
@@ -112,12 +211,16 @@ export type Rider = {
 
 export type OrderItem = {
   id: number;
+  order_id?: number;
   product_id: number;
   size: ProductSize;
+  unit_type?: UnitType;
   quantity: number;
+  estimated_quantity?: string | number;
+  actual_quantity?: string | number | null;
   unit_price: string | number;
   subtotal: string | number;
-  product?: Pick<Product, 'id' | 'name' | 'image' | 'category'>;
+  product?: Pick<Product, 'id' | 'name' | 'image' | 'category' | 'unit_type'>;
 };
 
 export type Order = {
@@ -128,6 +231,7 @@ export type Order = {
   delivery_type: DeliveryType;
   payment_method: PaymentMethod;
   total: string | number;
+  shipping_fee?: string | number | null;
   address_line?: string | null;
   city?: string | null;
   province?: string | null;
@@ -165,6 +269,8 @@ export type SavedAddress = {
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pending: 'Pending',
+  awaiting_weighing: 'Awaiting Weighing',
+  price_confirmed: 'Price Confirmed',
   confirmed: 'Confirmed',
   processing: 'Processing',
   ready: 'Ready',
@@ -175,6 +281,8 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
+  awaiting_weighing: 'bg-cyan-100 text-cyan-800',
+  price_confirmed: 'bg-teal-100 text-teal-800',
   confirmed: 'bg-orange-100 text-orange-800',
   processing: 'bg-blue-100 text-blue-800',
   ready: 'bg-purple-100 text-purple-800',

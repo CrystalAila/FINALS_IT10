@@ -27,7 +27,8 @@ const AppRouter: React.FC = () => {
   const { user } = useAuth();
 
   const homeRedirect = () => {
-    if (!user) return '/login';
+    const hasToken = Boolean(localStorage.getItem('poultry_token'));
+    if (!user || !hasToken) return '/login';
     if (user.role === 'customer') return '/customer';
     if (user.role === 'admin') return '/admin/dashboard';
     if (user.role === 'rider') return '/rider/dashboard';
@@ -157,11 +158,40 @@ const AppRouter: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/*"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Navigate to="/admin/dashboard" replace />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Internal Link Shortcuts / Copied URL Aliases */}
+        <Route path="/cart" element={<Navigate to="/customer/cart" replace />} />
+        <Route path="/checkout" element={<Navigate to="/customer/checkout" replace />} />
+        <Route path="/orders" element={<Navigate to="/customer/orders" replace />} />
+        <Route path="/orders/:id" element={<Navigate to="/customer/orders" replace />} />
+        <Route path="/profile" element={<Navigate to="/customer/profile" replace />} />
+        <Route path="/addresses" element={<Navigate to="/customer/addresses" replace />} />
+        <Route path="/listings" element={<Navigate to="/seller/listings" replace />} />
+        <Route path="/shop" element={<Navigate to="/seller/shop" replace />} />
+        <Route path="/dashboard" element={<Navigate to={homeRedirect()} replace />} />
 
         <Route path="/" element={<Navigate to={homeRedirect()} replace />} />
         <Route path="/seller" element={<Navigate to="/seller/dashboard" replace />} />
         <Route path="/reseller" element={<Navigate to="/seller/dashboard" replace />} />
-        <Route path="*" element={<div className="p-4">Not Found</div>} />
+        <Route path="/rider" element={<Navigate to="/rider/dashboard" replace />} />
+        <Route
+          path="*"
+          element={
+            !user || !localStorage.getItem('poultry_token') ? (
+              <Navigate to="/login" replace />
+            ) : (
+              <Navigate to={homeRedirect()} replace />
+            )
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

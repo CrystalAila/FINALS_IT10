@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import api from '../../lib/axios';
 import Modal from '../../components/customer/Modal';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import type { SavedAddress } from '../../types/marketplace';
 
 const emptyForm = {
@@ -16,9 +17,9 @@ const emptyForm = {
 
 export default function AddressBookPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -29,7 +30,7 @@ export default function AddressBookPage() {
     api
       .get('/addresses')
       .then((res) => setAddresses(res.data.addresses))
-      .catch(() => setError('Failed to load addresses'))
+      .catch(() => toast.error('Failed to load addresses'))
       .finally(() => setLoading(false));
   };
 
@@ -63,17 +64,18 @@ export default function AddressBookPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setError(null);
     try {
       if (editingId) {
         await api.put(`/addresses/${editingId}`, form);
+        toast.success('Address updated successfully');
       } else {
         await api.post('/addresses', form);
+        toast.success('Address added successfully');
       }
       setModalOpen(false);
       loadAddresses();
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Failed to save address');
+      toast.error(err?.response?.data?.message ?? 'Failed to save address');
     } finally {
       setSaving(false);
     }
@@ -83,18 +85,20 @@ export default function AddressBookPage() {
     if (!confirm('Delete this address?')) return;
     try {
       await api.delete(`/addresses/${id}`);
+      toast.success('Address deleted');
       loadAddresses();
     } catch {
-      setError('Failed to delete address');
+      toast.error('Failed to delete address');
     }
   };
 
   const handleSetDefault = async (id: number) => {
     try {
       await api.post(`/addresses/${id}/default`);
+      toast.success('Default address updated');
       loadAddresses();
     } catch {
-      setError('Failed to set default address');
+      toast.error('Failed to set default address');
     }
   };
 
@@ -103,7 +107,6 @@ export default function AddressBookPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Address Book</h1>
-          <p className="text-sm text-gray-500">Manage your delivery addresses</p>
         </div>
         <button
           type="button"
@@ -113,8 +116,6 @@ export default function AddressBookPage() {
           Add Address
         </button>
       </div>
-
-      {error && <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>}
 
       {loading ? (
         <p className="text-center text-gray-500">Loading addresses...</p>

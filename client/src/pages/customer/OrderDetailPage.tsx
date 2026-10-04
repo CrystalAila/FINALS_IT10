@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../../lib/axios';
+import { useToast } from '../../context/ToastContext';
 import type { Order } from '../../types/marketplace';
 import {
   formatPrice,
+  formatQuantityWithUnit,
+  formatUnitSuffix,
   ORDER_STATUS_COLORS,
   ORDER_STATUS_LABELS,
   PAYMENT_LABELS,
@@ -29,6 +32,8 @@ export default function OrderDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  const toast = useToast();
+
   const handlePrint = () => {
     window.print();
   };
@@ -39,9 +44,11 @@ export default function OrderDetailPage() {
       const res = await api.put(`/orders/${id}/receive`);
       setOrder(res.data.order);
       setReceiveSuccess(true);
+      toast.success('Order receipt confirmed! Thank you.');
       setTimeout(() => setReceiveSuccess(false), 3000);
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to confirm order receipt.');
+      const errMsg = err?.response?.data?.message || 'Failed to confirm order receipt.';
+      toast.error(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -56,8 +63,10 @@ export default function OrderDetailPage() {
       setOrder(res.data.order);
       setShowCancelModal(false);
       setCancelReason('');
+      toast.success('Order cancelled successfully.');
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to cancel order.');
+      const errMsg = err?.response?.data?.message || 'Failed to cancel order.';
+      toast.error(errMsg);
     } finally {
       setSubmitting(false);
     }
@@ -87,8 +96,8 @@ export default function OrderDetailPage() {
         </Link>
         
         <div className="flex items-center gap-3">
-          {/* Cancel Order Button: Show if Pending or Confirmed (before Processing) */}
-          {(order.status === 'pending' || order.status === 'confirmed') && (
+          {/* Cancel Order Button: Show if Pending, Awaiting Weighing, Price Confirmed, or Confirmed (before Processing) */}
+          {['pending', 'awaiting_weighing', 'price_confirmed', 'confirmed'].includes(order.status) && (
             <button
               type="button"
               onClick={() => setShowCancelModal(true)}
@@ -126,16 +135,45 @@ export default function OrderDetailPage() {
         </div>
       )}
 
+      {order.status === 'awaiting_weighing' && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 flex items-start gap-3 print:hidden">
+          <span className="text-xl">⚖️</span>
+          <div>
+            <p className="font-bold">Awaiting Seller Weighing</p>
+            <p className="text-xs text-amber-800 mt-0.5">
+              This order contains variable-weight poultry priced per kilo. The seller is preparing and weighing your items. The final invoice amount will update once weighed.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {order.status === 'price_confirmed' && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 flex items-start gap-3 print:hidden">
+          <span className="text-xl">✅</span>
+          <div>
+            <p className="font-bold">Price & Weight Confirmed</p>
+            <p className="text-xs text-emerald-800 mt-0.5">
+              The seller has weighed your poultry and confirmed the final weight and invoice total. Ready for preparation & delivery!
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Invoice */}
       <div ref={invoiceRef} className="rounded-2xl bg-white p-8 shadow-card print:shadow-none">
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 pb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Invoice <span className="text-brand">#{order.id}</span>
-            </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              {new Date(order.created_at).toLocaleString()}
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white p-1 shadow-sm border border-slate-200/80 shrink-0 overflow-hidden">
+              <img src="/logo.png" alt="PoultryLink Logo" className="h-full w-full object-contain" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Invoice <span className="text-brand">#{order.id}</span>
+              </h1>
+              <p className="mt-1 text-sm text-gray-500">
+                {new Date(order.created_at).toLocaleString()}
+              </p>
+            </div>
           </div>
           <span className={`rounded-full px-4 py-1.5 text-sm font-semibold ${ORDER_STATUS_COLORS[order.status]}`}>
             {ORDER_STATUS_LABELS[order.status]}
@@ -180,33 +218,98 @@ export default function OrderDetailPage() {
           </div>
         )}
 
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-500">
-              <th className="pb-3 font-semibold">Item</th>
-              <th className="pb-3 font-semibold">Size</th>
-              <th className="pb-3 font-semibold">Qty</th>
-              <th className="pb-3 text-right font-semibold">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {order.items?.map((item) => (
-              <tr key={item.id} className="border-b border-gray-50">
-                <td className="py-3 text-gray-900">{item.product?.name ?? `Product #${item.product_id}`}</td>
-                <td className="py-3 text-gray-600">{SIZE_LABELS[item.size]}</td>
-                <td className="py-3 text-gray-600">{item.quantity}</td>
-                <td className="py-3 text-right font-medium text-gray-900">
-                  {formatPrice(Number(item.subtotal))}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-gray-500">
+                <th className="pb-3 font-semibold">Item</th>
+                <th className="pb-3 font-semibold">Size</th>
+                <th className="pb-3 font-semibold">Quantity / Weight</th>
+                <th className="pb-3 font-semibold">Unit Price</th>
+                <th className="pb-3 text-right font-semibold">Subtotal</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {order.items?.map((item) => {
+                const unitType = item.unit_type || item.product?.unit_type;
+                const isPerKilo = unitType === 'per_kilo';
+                const hasActual = item.actual_quantity !== null && item.actual_quantity !== undefined;
+                const displayQty = hasActual
+                  ? Number(item.actual_quantity)
+                  : Number(item.estimated_quantity || item.quantity);
+                const isEstimated = isPerKilo && !hasActual;
 
-        <div className="mt-6 flex justify-end border-t border-gray-100 pt-4">
-          <div className="text-right">
-            <p className="text-sm text-gray-500">Total</p>
-            <p className="text-2xl font-bold text-gray-900">{formatPrice(Number(order.total))}</p>
+                return (
+                  <tr key={item.id} className="border-b border-gray-50">
+                    <td className="py-3 text-gray-900">
+                      <p className="font-medium">{item.product?.name ?? `Product #${item.product_id}`}</p>
+                      <p className="text-xs text-gray-400">
+                        {item.product?.name} — {formatQuantityWithUnit(displayQty, unitType)} @ {formatPrice(Number(item.unit_price))}{formatUnitSuffix(unitType)}
+                      </p>
+                    </td>
+                    <td className="py-3 text-gray-600">{SIZE_LABELS[item.size]}</td>
+                    <td className="py-3 text-gray-600">
+                      <span className="font-medium text-gray-800">{formatQuantityWithUnit(displayQty, unitType)}</span>
+                      {isEstimated && (
+                        <span className="ml-1.5 inline-block text-[11px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                          Est.
+                        </span>
+                      )}
+                      {hasActual && isPerKilo && (
+                        <span className="ml-1.5 inline-block text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          Weighed
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 text-gray-600">
+                      {formatPrice(Number(item.unit_price))} <span className="text-xs text-gray-400">{formatUnitSuffix(unitType)}</span>
+                    </td>
+                    <td className="py-3 text-right font-medium text-gray-900">
+                      {formatPrice(Number(item.subtotal))}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-6 border-t border-gray-100 pt-4 flex justify-end">
+          <div className="w-64 space-y-2 text-sm">
+            <div className="flex justify-between text-gray-500">
+              <span>Items Subtotal</span>
+              <span>
+                {formatPrice(
+                  order.items?.reduce((acc, it) => acc + Number(it.subtotal), 0) ??
+                  (Number(order.total) - Number(order.shipping_fee || 0))
+                )}
+              </span>
+            </div>
+            {order.delivery_type === 'delivery' ? (
+              <div className="flex justify-between text-gray-600">
+                <span>Delivery Fee</span>
+                <span className="font-semibold text-gray-900">
+                  {formatPrice(
+                    order.shipping_fee !== undefined && order.shipping_fee !== null
+                      ? Number(order.shipping_fee)
+                      : Math.max(
+                          0,
+                          Number(order.total) -
+                            (order.items?.reduce((acc, it) => acc + Number(it.subtotal), 0) ?? 0)
+                        )
+                  )}
+                </span>
+              </div>
+            ) : (
+              <div className="flex justify-between text-gray-600">
+                <span>Delivery Fee</span>
+                <span className="font-semibold text-emerald-600">Free (Store Pickup)</span>
+              </div>
+            )}
+            <div className="flex justify-between border-t border-gray-200 pt-2 font-bold text-gray-900 text-base">
+              <span>Total</span>
+              <span className="text-xl">{formatPrice(Number(order.total))}</span>
+            </div>
           </div>
         </div>
 

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../lib/axios';
 import SearchIcon from '../components/common/SearchIcon';
+import PrintIcon from '../components/common/PrintIcon';
+import { useToast } from '../context/ToastContext';
 
 interface SellerUser {
   id: number;
@@ -49,6 +51,7 @@ interface ShareSummary {
 }
 
 const AdminShares: React.FC = () => {
+  const { toast } = useToast();
   const [shares, setShares] = useState<AdminShareItem[]>([]);
   const [summary, setSummary] = useState<ShareSummary | null>(null);
   const [availablePeriods, setAvailablePeriods] = useState<string[]>([]);
@@ -56,7 +59,6 @@ const AdminShares: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'paid' | 'overdue'>('all');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [search, setSearch] = useState('');
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
   // Modal for Mark as Paid
@@ -83,7 +85,7 @@ const AdminShares: React.FC = () => {
       setAvailablePeriods(res.data.available_periods || []);
     } catch (err) {
       console.error('Failed to load admin shares:', err);
-      setActionMessage('Failed to load shares. Please try again.');
+      toast.error('Failed to load shares. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -98,11 +100,11 @@ const AdminShares: React.FC = () => {
     try {
       setSyncing(true);
       await api.post('/admin/shares/sync');
-      setActionMessage('Successfully synchronized shares from seller orders!');
+      toast.success('Successfully synchronized shares from seller orders!');
       fetchShares();
     } catch (err) {
       console.error('Failed to sync shares:', err);
-      setActionMessage('Error syncing shares. Please try again.');
+      toast.error('Error syncing shares. Please try again.');
     } finally {
       setSyncing(false);
     }
@@ -116,14 +118,14 @@ const AdminShares: React.FC = () => {
         reference: paymentRef.trim() || undefined,
         notes: paymentNotes.trim() || undefined,
       });
-      setActionMessage(res.data.message || 'Payment recorded successfully.');
+      toast.success(res.data.message || 'Payment recorded successfully.');
       setPayingShare(null);
       setPaymentRef('');
       setPaymentNotes('');
       fetchShares();
     } catch (err: any) {
       console.error('Failed to mark share as paid:', err);
-      alert(err?.response?.data?.message || 'Failed to record payment.');
+      toast.error(err?.response?.data?.message || 'Failed to record payment.');
     } finally {
       setSubmittingPayment(false);
     }
@@ -154,59 +156,53 @@ const AdminShares: React.FC = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      {/* SCREEN VIEW */}
+      <div className="space-y-6 print:hidden">
         {/* Header */}
         <div
           className="rounded-3xl p-6 text-white shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4"
           style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
         >
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-emerald-100 font-semibold">Revenue Compliance</p>
-            <h1 className="mt-2 text-3xl font-semibold">Admin Share Management</h1>
+            <h1 className="text-2xl font-bold">Admin Shares</h1>
           </div>
-          <div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => window.print()}
+              className="print:hidden inline-flex items-center justify-center gap-2 rounded-xl bg-white/20 hover:bg-white/30 border border-white/30 text-white px-4 py-2.5 text-sm font-semibold shadow-sm transition backdrop-blur-sm cursor-pointer"
+            >
+              <PrintIcon className="h-4 w-4" />
+              <span>Print Report</span>
+            </button>
             <button
               onClick={handleSync}
               disabled={syncing}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] text-white px-5 py-2.5 text-sm font-semibold shadow-sm transition-all duration-150 disabled:opacity-50"
+              className="print:hidden inline-flex items-center gap-2 rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] text-white px-5 py-2.5 text-sm font-semibold shadow-sm transition-all duration-150 disabled:opacity-50 cursor-pointer"
             >
               {syncing ? 'Syncing...' : 'Sync Shares Now'}
             </button>
           </div>
         </div>
 
-        {/* Action Alert Banner */}
-        {actionMessage && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm text-emerald-900 flex items-center justify-between shadow-sm">
-            <span>{actionMessage}</span>
-            <button
-              onClick={() => setActionMessage(null)}
-              className="text-emerald-700 hover:text-emerald-950 font-bold ml-4"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
         {/* Top KPI Cards */}
         {summary && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Collected (This Month)</p>
-              <p className="mt-2 text-3xl font-bold text-emerald-600">{formatPHP(summary.total_collected_month)}</p>
+              <p className="mt-2 text-3xl font-bold text-slate-900">{formatPHP(summary.total_collected_month)}</p>
               <p className="mt-1 text-xs text-slate-500">Paid 5% platform fees for {formatMonth(summary.current_month)}</p>
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Due (This Month)</p>
-              <p className="mt-2 text-3xl font-bold text-amber-600">{formatPHP(summary.total_due_month)}</p>
+              <p className="mt-2 text-3xl font-bold text-slate-900">{formatPHP(summary.total_due_month)}</p>
               <p className="mt-1 text-xs text-slate-500">Awaiting payment before grace period deadline</p>
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Overdue (Auto-Suspended)</p>
-              <p className="mt-2 text-3xl font-bold text-rose-600">{formatPHP(summary.total_overdue_amount)}</p>
-              <p className="mt-1 text-xs text-rose-500 font-medium">{summary.overdue_count} {summary.overdue_count === 1 ? 'share overdue' : 'shares overdue'}</p>
+              <p className="mt-2 text-3xl font-bold text-slate-900">{formatPHP(summary.total_overdue_amount)}</p>
+              <p className="mt-1 text-xs text-slate-500 font-medium">{summary.overdue_count} {summary.overdue_count === 1 ? 'share overdue' : 'shares overdue'}</p>
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -218,7 +214,7 @@ const AdminShares: React.FC = () => {
         )}
 
         {/* Filter and Search Bar */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4 print:hidden">
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             {/* Status Pills */}
             <div className="flex flex-wrap gap-2">
@@ -244,15 +240,15 @@ const AdminShares: React.FC = () => {
                 onChange={(e) => setSelectedPeriod(e.target.value)}
                 className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-emerald-600"
               >
-                <option value="all">All Months</option>
+                <option value="all">All Periods</option>
                 {availablePeriods.map((p) => (
                   <option key={p} value={p}>
-                    {formatMonth(p)} ({p})
+                    {formatMonth(p)}
                   </option>
                 ))}
               </select>
 
-              <div className="relative flex items-center min-w-[220px]">
+              <form onSubmit={handleSearchSubmit} className="relative flex items-center min-w-[220px]">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                   <SearchIcon className="h-4 w-4 text-slate-400" />
                 </div>
@@ -261,85 +257,102 @@ const AdminShares: React.FC = () => {
                   placeholder="Search seller or farm..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-emerald-600"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-2 text-xs font-medium text-slate-800 placeholder-slate-400 outline-none focus:border-emerald-600"
                 />
-              </div>
+              </form>
             </div>
           </div>
+        </div>
 
-          {/* Shares Table */}
-          {loading ? (
-            <div className="py-16 text-center text-slate-500">
-              <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-emerald-800 border-t-transparent mr-2 align-middle"></span>
-              Loading platform shares...
-            </div>
-          ) : filteredShares.length === 0 ? (
-            <div className="py-16 text-center text-slate-500">
-              No platform share records found matching criteria.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200 text-xs font-semibold uppercase text-slate-400 tracking-wider">
-                    <th className="pb-4">Seller & Farm</th>
-                    <th className="pb-4">Billing Month</th>
-                    <th className="pb-4 text-right">Gross Sales</th>
-                    <th className="pb-4 text-right">5% Admin Share</th>
-                    <th className="pb-4">Due Date</th>
-                    <th className="pb-4">Auto-Suspension Deadline</th>
-                    <th className="pb-4 text-center">Status</th>
-                    <th className="pb-4 text-right">Actions</th>
+        {/* Shares Table */}
+        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-900">Platform Share Records</h2>
+            <span className="text-xs text-slate-400 font-medium">
+              Showing {filteredShares.length} {filteredShares.length === 1 ? 'record' : 'records'}
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/75 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3.5 px-6">Seller & Farm</th>
+                  <th className="py-3.5 px-4">Billing Period</th>
+                  <th className="py-3.5 px-4">Total Revenue</th>
+                  <th className="py-3.5 px-4">5% Share</th>
+                  <th className="py-3.5 px-4">Due Date</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-6 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="py-16 text-center text-slate-400">
+                      <span className="inline-block w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mr-2"></span>
+                      Loading administrative shares...
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
-                  {filteredShares.map((share) => {
+                ) : filteredShares.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-16 text-center text-slate-400">
+                      No administrative shares found matching your filters.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredShares.map((share) => {
                     const isOverdue = share.status === 'overdue';
                     const isPaid = share.status === 'paid';
-
                     return (
-                      <tr key={share.id} className="hover:bg-slate-50/70 transition">
-                        <td className="py-4 font-semibold text-slate-900">
-                          <div>
-                            <p>{share.seller?.fullname || share.seller?.username || 'Unknown Seller'}</p>
-                            <p className="text-xs text-slate-500 font-normal">
-                              Farm: {share.farm?.name || 'N/A'} {share.seller?.phone && `• ${share.seller.phone}`}
-                            </p>
-                          </div>
+                      <tr key={share.id} className="hover:bg-slate-50/50 transition">
+                        {/* Seller & Farm */}
+                        <td className="py-4 px-6">
+                          <p className="font-semibold text-slate-900">
+                            {share.seller?.fullname || share.seller?.username || 'Unknown Seller'}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {share.farm?.name || 'No farm listed'}
+                            {share.seller?.phone ? ` • ${share.seller.phone}` : ''}
+                          </p>
                         </td>
-                        <td className="py-4 text-slate-700 font-medium">
+
+                        {/* Billing Period */}
+                        <td className="py-4 px-4 font-medium text-slate-700">
                           {formatMonth(share.billing_period)}
                         </td>
-                        <td className="py-4 text-right font-medium text-slate-700">
+
+                        {/* Total Revenue */}
+                        <td className="py-4 px-4 font-medium text-slate-700">
                           {formatPHP(share.total_revenue)}
                         </td>
-                        <td className="py-4 text-right font-bold text-slate-900">
+
+                        {/* Share Amount */}
+                        <td className="py-4 px-4 font-bold text-slate-900">
                           {formatPHP(share.share_amount)}
                         </td>
-                        <td className="py-4 text-slate-600 text-xs font-medium">
-                          {new Date(share.due_date).toLocaleDateString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </td>
-                        <td className="py-4 text-xs">
+
+                        {/* Due Date & Grace */}
+                        <td className="py-4 px-4 text-xs">
                           <span className={isOverdue ? 'text-rose-600 font-bold' : 'text-slate-600 font-medium'}>
-                            {new Date(share.grace_period_date).toLocaleDateString(undefined, {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}
+                            {share.due_date ? new Date(share.due_date).toLocaleDateString() : 'N/A'}
                           </span>
+                          {share.status !== 'paid' && (
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              Grace: {new Date(share.grace_period_date).toLocaleDateString()}
+                            </p>
+                          )}
                         </td>
-                        <td className="py-4 text-center">
+
+                        {/* Status */}
+                        <td className="py-4 px-4">
                           {isPaid ? (
                             <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
                               Paid
                             </span>
                           ) : isOverdue ? (
                             <span className="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-800" title="Shop is automatically suspended">
-                              Overdue (Suspended)
+                              Overdue
                             </span>
                           ) : (
                             <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
@@ -347,19 +360,21 @@ const AdminShares: React.FC = () => {
                             </span>
                           )}
                         </td>
-                        <td className="py-4 text-right">
+
+                        {/* Action */}
+                        <td className="py-4 px-6 text-right">
                           {isPaid ? (
                             <span className="text-xs text-slate-400 italic">
-                              Paid {share.paid_at ? new Date(share.paid_at).toLocaleDateString() : ''}
+                              {share.paid_at ? new Date(share.paid_at).toLocaleDateString() : 'Completed'}
                             </span>
                           ) : (
                             <button
                               onClick={() => {
                                 setPayingShare(share);
-                                setPaymentRef('');
-                                setPaymentNotes('');
+                                setPaymentRef(share.payment_reference || '');
+                                setPaymentNotes(share.notes || '');
                               }}
-                              className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                              className="inline-flex items-center gap-1 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-white px-3.5 py-1.5 text-xs font-semibold shadow-sm transition"
                             >
                               Mark as Paid
                             </button>
@@ -367,19 +382,19 @@ const AdminShares: React.FC = () => {
                         </td>
                       </tr>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Modal: Mark Share as Paid */}
+        {/* Mark as Paid Modal */}
         {payingShare && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h3 className="text-lg font-bold text-slate-900">Mark Share as Paid</h3>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+            <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in duration-150">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-lg font-bold text-slate-900">Record Platform Share Payment</h3>
                 <button
                   onClick={() => setPayingShare(null)}
                   className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
@@ -389,15 +404,15 @@ const AdminShares: React.FC = () => {
               </div>
 
               <div className="mt-4 space-y-4 text-sm">
-                <div className="rounded-2xl bg-emerald-50 p-4 text-emerald-950 border border-emerald-200/60">
-                  <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Payment Details</p>
+                <div className="rounded-2xl bg-slate-50 p-4 text-slate-900 border border-slate-200">
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Payment Details</p>
                   <p className="mt-1 text-base font-bold text-slate-900">
                     {payingShare.seller?.fullname || payingShare.seller?.username}
                   </p>
                   <p className="text-xs text-slate-600 mt-0.5">
                     Period: {formatMonth(payingShare.billing_period)} • Gross Sales: {formatPHP(payingShare.total_revenue)}
                   </p>
-                  <p className="mt-2 text-2xl font-extrabold text-emerald-700">
+                  <p className="mt-2 text-2xl font-extrabold text-slate-900">
                     {formatPHP(payingShare.share_amount)}
                   </p>
                 </div>
@@ -456,6 +471,120 @@ const AdminShares: React.FC = () => {
             </div>
           </div>
         )}
+      </div>
+
+      {/* FORMAL PRINT REPORT LAYOUT (PLAIN WHITE, FORMAL HEADERS, NO COLOR CARDS) */}
+      <div className="hidden print:block text-slate-900 bg-white font-sans text-xs p-2">
+        {/* Letterhead Header */}
+        <div className="border-b-2 border-slate-900 pb-3 mb-5">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-600">PoultryLink Agricultural Marketplace</p>
+              <h1 className="text-xl font-bold uppercase text-slate-950 mt-0.5">
+                Administrative Shares (5% Platform Fee) Statement & Report
+              </h1>
+              <p className="text-xs text-slate-600 mt-1">
+                Financial Operations & Seller Revenue Settlements &bull; Billing Period: {selectedPeriod === 'all' ? 'All Recorded Periods' : formatMonth(selectedPeriod)}
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="inline-block border-2 border-slate-900 px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-900">
+                Official Financial Statement
+              </div>
+              <p className="text-[11px] text-slate-600 mt-2">
+                Date: {new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
+              <p className="text-[11px] text-slate-600">
+                Time: {new Date().toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 1: Summary Totals */}
+        {summary && (
+          <div className="mb-6">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b border-slate-400 pb-1 mb-2">
+              I. Platform Shares Collection Summary
+            </h2>
+            <table className="w-full border-collapse border border-slate-400 text-xs">
+              <tbody>
+                <tr className="border-b border-slate-300">
+                  <td className="p-2.5 font-semibold bg-slate-50 border-r border-slate-300 w-1/4">Total Collected (This Month)</td>
+                  <td className="p-2.5 font-bold text-slate-900 border-r border-slate-300 w-1/4 text-sm">{formatPHP(summary.total_collected_month)}</td>
+                  <td className="p-2.5 font-semibold bg-slate-50 border-r border-slate-300 w-1/4">Total Due (This Month)</td>
+                  <td className="p-2.5 font-bold text-slate-900 w-1/4 text-sm">{formatPHP(summary.total_due_month)}</td>
+                </tr>
+                <tr>
+                  <td className="p-2.5 font-semibold bg-slate-50 border-r border-slate-300">Total Overdue Amount</td>
+                  <td className="p-2.5 font-bold text-slate-900 border-r border-slate-300">
+                    {formatPHP(summary.total_overdue_amount)} ({summary.overdue_count} overdue)
+                  </td>
+                  <td className="p-2.5 font-semibold bg-slate-50 border-r border-slate-300">Unpaid Sellers Count</td>
+                  <td className="p-2.5 font-bold text-slate-900">{summary.unpaid_sellers_count}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Section 2: Itemized Schedule */}
+        <div className="mb-6">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b border-slate-400 pb-1 mb-2">
+            II. Itemized Platform Share Billing Schedule
+          </h2>
+          <table className="w-full border-collapse border border-slate-400 text-xs">
+            <thead>
+              <tr className="bg-slate-100 text-slate-800">
+                <th className="p-2 border border-slate-400 text-left font-semibold">Seller & Farm Name</th>
+                <th className="p-2 border border-slate-400 text-center font-semibold">Billing Period</th>
+                <th className="p-2 border border-slate-400 text-right font-semibold">Seller Gross Sales</th>
+                <th className="p-2 border border-slate-400 text-right font-semibold">5% Share Due</th>
+                <th className="p-2 border border-slate-400 text-center font-semibold">Due Date</th>
+                <th className="p-2 border border-slate-400 text-center font-semibold">Status</th>
+                <th className="p-2 border border-slate-400 text-left font-semibold">Payment Reference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredShares.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-3 text-center text-slate-500 border border-slate-300">
+                    No share records matching current selection.
+                  </td>
+                </tr>
+              ) : (
+                filteredShares.map((share) => (
+                  <tr key={share.id} className="border-b border-slate-300">
+                    <td className="p-2 border border-slate-300 font-semibold">
+                      {share.seller?.fullname || share.seller?.username}
+                      {share.farm?.name ? <span className="block text-[10px] font-normal text-slate-600">{share.farm.name}</span> : null}
+                    </td>
+                    <td className="p-2 border border-slate-300 text-center">{formatMonth(share.billing_period)}</td>
+                    <td className="p-2 border border-slate-300 text-right">{formatPHP(share.total_revenue)}</td>
+                    <td className="p-2 border border-slate-300 text-right font-bold">{formatPHP(share.share_amount)}</td>
+                    <td className="p-2 border border-slate-300 text-center">{share.due_date ? new Date(share.due_date).toLocaleDateString() : 'N/A'}</td>
+                    <td className="p-2 border border-slate-300 text-center uppercase font-bold text-[10px]">{share.status}</td>
+                    <td className="p-2 border border-slate-300 text-[10px]">{share.payment_reference || share.notes || (share.status === 'paid' ? 'Settled' : 'Pending')}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Signature Line */}
+        <div className="mt-12 pt-6 border-t border-slate-300 flex justify-between text-xs text-slate-700">
+          <div>
+            <p className="font-semibold">Prepared By:</p>
+            <div className="mt-8 border-b border-slate-400 w-48"></div>
+            <p className="mt-1">Financial Officer / Administrator</p>
+          </div>
+          <div>
+            <p className="font-semibold">Approved / Verified By:</p>
+            <div className="mt-8 border-b border-slate-400 w-48"></div>
+            <p className="mt-1">Operations & Compliance Head</p>
+          </div>
+        </div>
       </div>
     </AdminLayout>
   );

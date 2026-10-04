@@ -107,16 +107,14 @@ const AdminUsers = () => {
           className="rounded-3xl p-6 text-white shadow-sm"
           style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
         >
-          <p className="text-sm uppercase tracking-[0.2em] text-emerald-100 font-semibold">User Management</p>
-          <h1 className="mt-2 text-3xl font-semibold">System user registry</h1>
+          <h1 className="text-2xl font-bold">User Management</h1>
         </div>
 
         {/* User List Card */}
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-slate-500">System registry listing</p>
-              <h2 className="text-2xl font-semibold text-slate-900">Registered Users ({filteredUsers.length})</h2>
+              <h2 className="text-xl font-bold text-slate-900">Registered Users ({filteredUsers.length})</h2>
             </div>
             <div className="flex gap-2 flex-wrap items-center">
               <div className="relative flex items-center min-w-[240px]">
@@ -307,10 +305,10 @@ const AdminUsers = () => {
                 <div className="space-y-3">
                   <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-500">Shop / Farm Details</h4>
                   {selectedUser.farm ? (
-                    <div className="grid grid-cols-2 gap-4 text-sm bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
+                    <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 p-4 rounded-2xl border border-slate-200">
                       <div className="col-span-2">
                         <p className="text-slate-400 font-medium">Business Name</p>
-                        <p className="font-bold text-emerald-950 text-base">{selectedUser.farm.name}</p>
+                        <p className="font-bold text-slate-900 text-base">{selectedUser.farm.name}</p>
                       </div>
                       <div className="col-span-2">
                         <p className="text-slate-400 font-medium">Shop Location</p>
@@ -351,7 +349,7 @@ const AdminUsers = () => {
                       )}
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-500 italic bg-amber-50 p-4 rounded-2xl border border-amber-100">
+                    <p className="text-sm text-slate-500 italic bg-slate-50 p-4 rounded-2xl border border-slate-200">
                       No farm details configured for this seller yet.
                     </p>
                   )}
@@ -362,7 +360,7 @@ const AdminUsers = () => {
               {selectedUser.role === 'rider' && (
                 <div className="space-y-3">
                   <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-500">Rider Affiliation</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                  <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 p-4 rounded-2xl border border-slate-200">
                     <div>
                       <p className="text-slate-400 font-medium">Rider Phone</p>
                       <p className="font-semibold text-slate-800">{selectedUser.phone || 'None'}</p>

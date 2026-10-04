@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { MapPin } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import Logo from './Logo';
@@ -7,22 +8,38 @@ import api from '../../lib/axios';
 
 export default function CustomerNavbar() {
   const { user, logout } = useAuth();
-  const { itemCount } = useCart();
+  const { itemCount, hasUnreadCart, markCartAsRead } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [hasStatusNotification, setHasStatusNotification] = useState(false);
-  const [prevPath, setPrevPath] = useState(location.pathname);
+  const [hasStatusNotification, setHasStatusNotification] = useState<boolean>(
+    () => localStorage.getItem('customer_orders_has_unread') === 'true',
+  );
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
+  // Clear cart notification when viewing cart page
+  useEffect(() => {
+    if (location.pathname === '/customer/cart') {
+      markCartAsRead();
+    }
+  }, [location.pathname, markCartAsRead]);
+
+  // Clear orders notification immediately when visiting orders pages
+  useEffect(() => {
+    if (location.pathname === '/customer/orders' || location.pathname.startsWith('/customer/orders/')) {
+      setHasStatusNotification(false);
+      localStorage.setItem('customer_orders_has_unread', 'false');
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     if (!user) return;
 
-    const checkOrderStatusChanges = async (isPageLoad = false) => {
+    const checkOrderStatusChanges = async () => {
       try {
         const res = await api.get('/orders');
         const orders = res.data.orders ?? [];
@@ -43,17 +60,19 @@ export default function CustomerNavbar() {
           }
         });
 
-        if (location.pathname === '/customer/orders') {
-          if (isPageLoad) {
-            localStorage.setItem('customer_order_status_map', JSON.stringify(currentMap));
-            setHasStatusNotification(false);
-          } else if (hasChange) {
-            setHasStatusNotification(true);
-          }
+        const isViewingOrders =
+          location.pathname === '/customer/orders' ||
+          location.pathname.startsWith('/customer/orders/');
+
+        if (isViewingOrders) {
+          localStorage.setItem('customer_order_status_map', JSON.stringify(currentMap));
+          localStorage.setItem('customer_orders_has_unread', 'false');
+          setHasStatusNotification(false);
         } else if (hasChange) {
           setHasStatusNotification(true);
+          localStorage.setItem('customer_orders_has_unread', 'true');
         } else {
-          // Keep stored map up-to-date with any new/cancelled/completed orders
+          // Keep stored map up-to-date with any newly created orders
           const newMap = { ...storedMap, ...currentMap };
           localStorage.setItem('customer_order_status_map', JSON.stringify(newMap));
         }
@@ -62,14 +81,11 @@ export default function CustomerNavbar() {
       }
     };
 
-    const isEnteringOrdersPage = location.pathname === '/customer/orders' && prevPath !== '/customer/orders';
-    setPrevPath(location.pathname);
+    checkOrderStatusChanges();
 
-    checkOrderStatusChanges(isEnteringOrdersPage);
-
-    const interval = setInterval(() => checkOrderStatusChanges(false), 15000);
+    const interval = setInterval(checkOrderStatusChanges, 15000);
     return () => clearInterval(interval);
-  }, [location.pathname, user, prevPath]);
+  }, [location.pathname, user]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-green-100 bg-white/90 shadow-nav backdrop-blur-md">
@@ -77,6 +93,21 @@ export default function CustomerNavbar() {
         <Logo />
 
         <div className="flex items-center gap-1 sm:gap-2">
+          {/* Stores Near Me */}
+          <Link
+            to="/customer/stores-near-me"
+            className={`relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium transition ${
+              location.pathname === '/customer/stores-near-me' || location.pathname === '/customer/stores'
+                ? 'bg-green-50 text-[#D96B27] font-semibold'
+                : 'text-gray-600 hover:bg-green-50 hover:text-[#D96B27]'
+            }`}
+            title="Stores Near Me"
+          >
+            <MapPin className="h-4 w-4 text-[#D96B27]" />
+            <span className="hidden sm:inline">Stores Near Me</span>
+            <span className="sm:hidden">Stores</span>
+          </Link>
+
           {/* My Orders */}
           <Link
             to="/customer/orders"
@@ -104,10 +135,8 @@ export default function CustomerNavbar() {
             title="Cart"
           >
             <span>Cart</span>
-            {itemCount > 0 && (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[#D96B27] px-1.5 text-[10px] font-bold text-white">
-                {itemCount > 9 ? '9+' : itemCount}
-              </span>
+            {hasUnreadCart && itemCount > 0 && (
+              <span className="h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white"></span>
             )}
           </Link>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../lib/axios';
+import { useToast } from '../context/ToastContext';
 import SearchIcon from '../components/common/SearchIcon';
 
 interface PermitRequest {
@@ -16,6 +17,7 @@ interface PermitRequest {
 }
 
 const AdminPermits: React.FC = () => {
+  const toast = useToast();
   const [permits, setPermits] = useState<PermitRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedPermit, setSelectedPermit] = useState<PermitRequest | null>(null);
@@ -37,38 +39,6 @@ const AdminPermits: React.FC = () => {
       setPermits(response.data);
     } catch (error) {
       console.error('Failed to fetch permits:', error);
-      // Demo data
-      setPermits([
-        {
-          id: 1,
-          seller_name: 'Farm Fresh Poultry Co.',
-          status: 'Pending',
-          documents: ['Business Permit', 'Tax ID', 'Compliance Declaration'],
-          submitted_at: '2 hours ago',
-        },
-        {
-          id: 2,
-          seller_name: 'Alpha Poultry Ltd',
-          status: 'Pending',
-          documents: ['Business Permit', 'KRA Certification'],
-          submitted_at: '5 hours ago',
-        },
-        {
-          id: 3,
-          seller_name: 'Green Valley Farms',
-          status: 'Approved',
-          documents: ['Business Permit', 'Health Certificate'],
-          submitted_at: '1 day ago',
-        },
-        {
-          id: 4,
-          seller_name: 'Quick Poultry Supply',
-          status: 'Rejected',
-          documents: ['Incomplete Documentation'],
-          submitted_at: '3 days ago',
-          notes: 'Missing health certificates',
-        },
-      ]);
     } finally {
       setLoading(false);
     }
@@ -77,55 +47,50 @@ const AdminPermits: React.FC = () => {
   const handleApprove = async (permitId: number) => {
     try {
       await api.put(`/admin/permits/${permitId}/approve`);
-      setActionMessage('Permit approved successfully');
+      toast.success('Permit approved successfully.');
       fetchPermits();
-      setTimeout(() => setActionMessage(''), 3000);
-    } catch (error) {
-      console.error('Failed to approve permit:', error);
+    } catch (error: any) {
+      toast.error('Failed to approve permit.');
     }
   };
 
   const handleReject = async (permitId: number) => {
     try {
       await api.put(`/admin/permits/${permitId}/reject`);
-      setActionMessage('Permit rejected successfully');
+      toast.success('Permit rejected.');
       fetchPermits();
-      setTimeout(() => setActionMessage(''), 3000);
-    } catch (error) {
-      console.error('Failed to reject permit:', error);
+    } catch (error: any) {
+      toast.error('Failed to reject permit.');
     }
   };
 
   const handleRequestRevision = async (permitId: number) => {
     try {
       await api.put(`/admin/permits/${permitId}/request-revision`);
-      setActionMessage('Revision requested from seller');
+      toast.info('Revision requested from seller.');
       fetchPermits();
-      setTimeout(() => setActionMessage(''), 3000);
-    } catch (error) {
-      console.error('Failed to request revision:', error);
+    } catch (error: any) {
+      toast.error('Failed to request revision.');
     }
   };
 
   const handleSuspend = async (permitId: number) => {
     try {
       await api.put(`/admin/permits/${permitId}/suspend`);
-      setActionMessage('Seller account suspended');
+      toast.warning('Seller account suspended.');
       fetchPermits();
-      setTimeout(() => setActionMessage(''), 3000);
-    } catch (error) {
-      console.error('Failed to suspend seller:', error);
+    } catch (error: any) {
+      toast.error('Failed to suspend seller.');
     }
   };
 
   const handleUnderReview = async (permitId: number) => {
     try {
       await api.put(`/admin/permits/${permitId}/under-review`);
-      setActionMessage('Permit status updated to Under Review');
+      toast.info('Permit status updated to Under Review.');
       fetchPermits();
-      setTimeout(() => setActionMessage(''), 3000);
-    } catch (error) {
-      console.error('Failed to set permit under review:', error);
+    } catch (error: any) {
+      toast.error('Failed to set permit under review.');
     }
   };
 
@@ -184,11 +149,7 @@ const AdminPermits: React.FC = () => {
           className="rounded-3xl p-6 text-white shadow-sm"
           style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
         >
-          <p className="text-sm uppercase tracking-[0.2em] text-emerald-100 font-semibold">Permit Verifications</p>
-          <h1 className="mt-2 text-3xl font-semibold">Review pending seller permits</h1>
-          <div className="mt-3 rounded-xl bg-white/15 px-3.5 py-2 text-xs text-white border border-white/20 inline-block">
-            <strong>Requirement:</strong> Only business permits are required for seller verification on PoultryLink.
-          </div>
+          <h1 className="text-2xl font-bold">Permit Verifications</h1>
         </div>
 
         {/* Success Message */}
@@ -204,7 +165,7 @@ const AdminPermits: React.FC = () => {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-500">Pending Approval</p>
-                <h2 className="mt-2 text-3xl font-semibold text-amber-600">{stats.pending}</h2>
+                <h2 className="mt-2 text-3xl font-semibold text-slate-900">{stats.pending}</h2>
               </div>
             </div>
           </div>
@@ -212,7 +173,7 @@ const AdminPermits: React.FC = () => {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-500">Under Review</p>
-                <h2 className="mt-2 text-3xl font-semibold text-[#D96B27]">{stats.underReview}</h2>
+                <h2 className="mt-2 text-3xl font-semibold text-slate-900">{stats.underReview}</h2>
               </div>
             </div>
           </div>
@@ -220,7 +181,7 @@ const AdminPermits: React.FC = () => {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-500">Approved</p>
-                <h2 className="mt-2 text-3xl font-semibold text-green-600">{permits.filter((p) => p.status === 'Approved').length}</h2>
+                <h2 className="mt-2 text-3xl font-semibold text-slate-900">{permits.filter((p) => p.status === 'Approved').length}</h2>
               </div>
             </div>
           </div>
@@ -228,7 +189,7 @@ const AdminPermits: React.FC = () => {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-500">Rejected</p>
-                <h2 className="mt-2 text-3xl font-semibold text-red-600">{permits.filter((p) => p.status === 'Rejected').length}</h2>
+                <h2 className="mt-2 text-3xl font-semibold text-slate-900">{permits.filter((p) => p.status === 'Rejected').length}</h2>
               </div>
             </div>
           </div>
@@ -240,11 +201,10 @@ const AdminPermits: React.FC = () => {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-                filter === f
-                  ? 'bg-emerald-950 text-white shadow-md'
-                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-              }`}
+              className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${filter === f
+                ? 'bg-emerald-950 text-white shadow-md'
+                : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
             >
               {f === 'under_review' ? 'Under Review' : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
@@ -318,7 +278,7 @@ const AdminPermits: React.FC = () => {
                           </div>
                         ))}
                       </div>
-                      
+
                       {/* Dates Display */}
                       {(permit.permit_issue_date || permit.permit_expiry_date) && (
                         <div className="mt-3 text-xs text-slate-600 flex flex-wrap gap-x-6 gap-y-1 bg-slate-50/50 p-2.5 rounded-lg border border-slate-100">
@@ -331,7 +291,7 @@ const AdminPermits: React.FC = () => {
                               {new Date(permit.permit_expiry_date) < new Date() ? (
                                 <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] text-red-700 font-bold animate-pulse">EXPIRED</span>
                               ) : (() => {
-                                const days = Math.ceil((new Date(permit.permit_expiry_date).getTime() - new Date().setHours(0,0,0,0)) / (1000 * 3600 * 24));
+                                const days = Math.ceil((new Date(permit.permit_expiry_date).getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 3600 * 24));
                                 if (days > 0 && days <= 30) {
                                   return (
                                     <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] text-orange-700 font-bold animate-pulse">EXPIRING SOON ({days}d left)</span>
@@ -453,7 +413,7 @@ const AdminPermits: React.FC = () => {
                 <h3 className="text-xl font-bold text-slate-900">{selectedPermit.seller_name}</h3>
                 {selectedPermit.permit_issue_date && (
                   <span className="text-xs text-slate-500 block mt-1">
-                    <strong>Issued:</strong> {new Date(selectedPermit.permit_issue_date).toLocaleDateString()} 
+                    <strong>Issued:</strong> {new Date(selectedPermit.permit_issue_date).toLocaleDateString()}
                     {selectedPermit.permit_expiry_date && (
                       <> | <strong>Expires:</strong> {new Date(selectedPermit.permit_expiry_date).toLocaleDateString()}</>
                     )}
@@ -461,7 +421,7 @@ const AdminPermits: React.FC = () => {
                       new Date(selectedPermit.permit_expiry_date) < new Date() ? (
                         <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[10px] text-red-700 font-bold animate-pulse inline-block">EXPIRED</span>
                       ) : (() => {
-                        const days = Math.ceil((new Date(selectedPermit.permit_expiry_date).getTime() - new Date().setHours(0,0,0,0)) / (1000 * 3600 * 24));
+                        const days = Math.ceil((new Date(selectedPermit.permit_expiry_date).getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 3600 * 24));
                         if (days > 0 && days <= 30) {
                           return (
                             <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] text-orange-700 font-bold animate-pulse inline-block">EXPIRING SOON ({days}d left)</span>

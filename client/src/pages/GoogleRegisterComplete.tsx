@@ -32,6 +32,12 @@ const GoogleRegisterComplete: React.FC = () => {
     setError(null);
     setLoading(true);
 
+    if (!phone.trim()) {
+      setError('Phone number is required');
+      setLoading(false);
+      return;
+    }
+
     if (role === 'seller' && !permitFile) {
       setError('Please upload your business permit');
       setLoading(false);
@@ -138,7 +144,7 @@ const GoogleRegisterComplete: React.FC = () => {
 
         <div>
           <label htmlFor="phone" className="mb-1.5 block text-sm font-semibold text-gray-700">
-            Phone {isSeller ? '' : '(optional)'}
+            Phone Number
           </label>
           <input
             id="phone"
@@ -146,7 +152,7 @@ const GoogleRegisterComplete: React.FC = () => {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-            required={isSeller}
+            required
           />
         </div>
 

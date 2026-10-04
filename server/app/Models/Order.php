@@ -10,11 +10,14 @@ class Order extends Model
 {
     protected $fillable = [
         'customer_id', 'farm_id', 'status', 'delivery_type', 'payment_method',
-        'total', 'address_line', 'city', 'province', 'postal_code',
+        'total', 'shipping_fee', 'address_line', 'city', 'province', 'postal_code',
         'phone', 'rider_name', 'rider_id', 'notes', 'cancel_reason',
     ];
 
-    protected $casts = ['total' => 'decimal:2'];
+    protected $casts = [
+        'total' => 'decimal:2',
+        'shipping_fee' => 'decimal:2',
+    ];
 
     public function customer(): BelongsTo
     {

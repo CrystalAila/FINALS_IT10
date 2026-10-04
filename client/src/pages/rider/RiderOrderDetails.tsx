@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import api from '../../lib/axios';
-import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '../../types/marketplace';
+import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS, resolveProductImage } from '../../types/marketplace';
 import type { Order } from '../../types/marketplace';
 
 const RiderOrderDetails: React.FC = () => {
@@ -113,12 +113,15 @@ const RiderOrderDetails: React.FC = () => {
               {order.items?.map((item) => (
                 <div key={item.id} className="flex items-center justify-between rounded-2xl bg-slate-50 p-4 border border-slate-100">
                   <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 overflow-hidden rounded-xl bg-slate-200">
-                      {item.product?.image ? (
-                        <img src={item.product.image} alt={item.product.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-slate-400">No Img</div>
-                      )}
+                    <div className="h-16 w-16 overflow-hidden rounded-xl bg-slate-200 shrink-0">
+                      <img
+                        src={resolveProductImage(item.product?.image, item.product?.category)}
+                        alt={item.product?.name || 'Product'}
+                        onError={(e) => {
+                          e.currentTarget.src = resolveProductImage(null, item.product?.category);
+                        }}
+                        className="h-full w-full object-cover"
+                      />
                     </div>
                     <div>
                       <p className="font-semibold text-slate-900">{item.product?.name ?? `Product #${item.product_id}`}</p>

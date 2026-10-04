@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../../lib/axios';
 import QuantitySelector from '../../components/customer/QuantitySelector';
+import SellerLocationMap from '../../components/customer/SellerLocationMap';
 import { useCart } from '../../context/CartContext';
-import type { Product, ProductSize } from '../../types/marketplace';
+import type { CartItem, Product, ProductSize } from '../../types/marketplace';
 import {
   SIZE_LABELS,
-  displayRating,
   formatPrice,
+  formatUnitSuffix,
   priceForSize,
   priceRange,
+  resolveProductImage,
 } from '../../types/marketplace';
 
 const SIZES: ProductSize[] = ['small', 'medium', 'large', 'jumbo'];
@@ -61,15 +63,18 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (product && availableSizes.length > 0) {
       setSize(availableSizes[0]);
+      if (product.unit_type === 'per_kilo') {
+        setQuantity(1.0);
+      }
     }
   }, [product]);
 
   // Adjust quantity if size stock changes
   useEffect(() => {
-    setQuantity(1);
-  }, [size]);
+    setQuantity(product?.unit_type === 'per_kilo' ? 1.0 : 1);
+  }, [size, product?.unit_type]);
 
-  const handleAddToCart = (redirect = false) => {
+  const handleAddToCart = () => {
     if (!product) return;
     addItem({
       productId: product.id,
@@ -78,13 +83,50 @@ export default function ProductDetailPage() {
       farmId: product.farm_id,
       farmName: product.farm?.name ?? 'Local Farm',
       farmLocation: product.farm?.location ?? 'Roxas City, Capiz',
+      category: product.category,
+      unitType: product.unit_type,
+      incrementStep: Number(product.increment_step || (product.unit_type === 'per_kilo' ? 0.5 : 1)),
       size,
       unitPrice: priceForSize(product, size),
       quantity,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
-    if (redirect) navigate('/customer/cart');
+  };
+
+  const handleBuyNow = () => {
+    if (!product) return;
+    const buyNowItem: CartItem = {
+      productId: product.id,
+      name: product.name,
+      image: product.image ?? null,
+      farmId: product.farm_id,
+      farmName: product.farm?.name ?? 'Local Farm',
+      farmLocation: product.farm?.location ?? 'Roxas City, Capiz',
+      category: product.category,
+      unitType: product.unit_type,
+      incrementStep: Number(product.increment_step || (product.unit_type === 'per_kilo' ? 0.5 : 1)),
+      size,
+      unitPrice: priceForSize(product, size),
+      quantity,
+    };
+
+    sessionStorage.setItem(
+      'poultrylink_checkout',
+      JSON.stringify({
+        items: [buyNowItem],
+        isBuyNow: true,
+        fromCart: false,
+      }),
+    );
+
+    navigate('/customer/checkout', {
+      state: {
+        checkoutItems: [buyNowItem],
+        isBuyNow: true,
+        fromCart: false,
+      },
+    });
   };
 
   if (loading) {
@@ -120,8 +162,11 @@ export default function ProductDetailPage() {
         {/* Image */}
         <div className="overflow-hidden rounded-2xl bg-gray-100 relative">
           <img
-            src={product.image ?? 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=700'}
+            src={resolveProductImage(product.image, product.category)}
             alt={product.name}
+            onError={(e) => {
+              e.currentTarget.src = resolveProductImage(null, product.category);
+            }}
             className="aspect-square w-full object-cover"
           />
           <span className="absolute left-4 top-4 rounded-full bg-slate-950/70 backdrop-blur-md px-3.5 py-1 text-xs font-semibold text-white capitalize">
@@ -152,59 +197,73 @@ export default function ProductDetailPage() {
                   </span>
                 )}
               </Link>
-              <span className="text-slate-300">|</span>
-              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                {displayRating(product.rating)} rating
-              </span>
             </div>
           </div>
 
           <div>
-            <p className="text-sm text-gray-500">Price range</p>
-            <p className="text-2xl font-bold text-brand">{priceRange(product)}</p>
-            {availableSizes.length > 0 && (
+            <p className="text-sm text-gray-500">Price</p>
+            <p className="text-2xl font-bold text-brand">
+              {priceRange(product)}
+              <span className="text-base font-normal text-gray-500 ml-1">{formatUnitSuffix(product.unit_type)}</span>
+            </p>
+            {product.category === 'eggs' && availableSizes.length > 0 && (
               <p className="mt-1 text-lg font-semibold text-gray-800">
-                Selected: {formatPrice(currentPrice)}
+                Selected: {formatPrice(currentPrice)} <span className="text-sm font-normal text-gray-500">{formatUnitSuffix(product.unit_type)}</span>
+              </p>
+            )}
+            {product.unit_type === 'per_kilo' && (
+              <p className="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 inline-block font-medium">
+                ⚖️ Estimated Price – Final amount will be updated once weighed by the seller
               </p>
             )}
           </div>
 
-          {/* Size options */}
-          <div>
-            <p className="mb-3 text-sm font-semibold text-gray-700">Size</p>
-            {availableSizes.length === 0 ? (
-              <div className="rounded-xl border border-red-200 bg-red-50/50 p-3 text-sm font-semibold text-red-700">
-                Out of Stock in all sizes.
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {availableSizes.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setSize(s)}
-                    className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
-                      size === s
-                        ? 'border-brand bg-brand text-white'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-brand/50'
-                    }`}
-                  >
-                    {SIZE_LABELS[s]}
-                    <span className="ml-1.5 text-xs opacity-80">
-                      ({formatPrice(priceForSize(product, s))})
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Size options - Only for Eggs */}
+          {product.category === 'eggs' && (
+            <div>
+              <p className="mb-3 text-sm font-semibold text-gray-700">Size</p>
+              {availableSizes.length === 0 ? (
+                <div className="rounded-xl border border-red-200 bg-red-50/50 p-3 text-sm font-semibold text-red-700">
+                  Out of Stock in all sizes.
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {availableSizes.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSize(s)}
+                      className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                        size === s
+                          ? 'border-brand bg-brand text-white'
+                          : 'border-gray-200 bg-white text-gray-700 hover:border-brand/50'
+                      }`}
+                    >
+                      {SIZE_LABELS[s]}
+                      <span className="ml-1.5 text-xs opacity-80">
+                        ({formatPrice(priceForSize(product, s))})
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Quantity */}
-          {availableSizes.length > 0 && (
+          {(product.category !== 'eggs' ? (product.stock > 0 || availableSizes.length > 0) : availableSizes.length > 0) && (
             <div>
               <p className="mb-3 text-sm font-semibold text-gray-700">Quantity</p>
-              <QuantitySelector value={quantity} onChange={setQuantity} max={getStockForSize(size)} />
-              <p className="mt-2 text-xs text-gray-400">{getStockForSize(size)} in stock</p>
+              <QuantitySelector
+                value={quantity}
+                onChange={setQuantity}
+                max={product.category !== 'eggs' ? (product.stock || getStockForSize(size)) : getStockForSize(size)}
+                unitType={product.unit_type}
+                step={product.increment_step ? Number(product.increment_step) : (product.unit_type === 'per_kilo' ? 0.1 : 1)}
+              />
+              <p className="mt-2 text-xs text-gray-400">
+                {product.category !== 'eggs' ? (product.stock || getStockForSize(size)) : getStockForSize(size)} in stock
+              </p>
             </div>
           )}
 
@@ -213,7 +272,7 @@ export default function ProductDetailPage() {
             <button
               type="button"
               disabled={availableSizes.length === 0 || quantity > getStockForSize(size)}
-              onClick={() => handleAddToCart(false)}
+              onClick={handleAddToCart}
               className="flex-1 rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
               {added ? 'Added to Cart' : 'Add to Cart'}
@@ -221,8 +280,8 @@ export default function ProductDetailPage() {
             <button
               type="button"
               disabled={availableSizes.length === 0 || quantity > getStockForSize(size)}
-              onClick={() => handleAddToCart(true)}
-              className="flex-1 rounded-full border-2 border-brand px-6 py-3 font-bold text-brand transition hover:bg-brand/5 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleBuyNow}
+              className="flex-1 rounded-full border-2 border-brand px-6 py-3 font-bold text-brand transition hover:bg-brand/5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               Buy Now
             </button>
@@ -243,12 +302,24 @@ export default function ProductDetailPage() {
                 <span className="text-slate-900 font-semibold">{product.farm_origin || farmName}</span>
               </p>
               <p className="text-gray-500 text-xs">
-                <strong>Shop Address:</strong> {product.farm?.location || 'Roxas City, Capiz'}
+                <strong>Shop Address:</strong> {product.farm?.full_address || product.farm?.location || 'Roxas City, Capiz'}
               </p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Seller Location & Map */}
+      {product.farm && (
+        <SellerLocationMap
+          name={farmName}
+          latitude={product.farm.latitude}
+          longitude={product.farm.longitude}
+          fullAddress={product.farm.full_address}
+          location={product.farm.location}
+          cardTitle="Seller & Store Location"
+        />
+      )}
     </div>
   );
 }

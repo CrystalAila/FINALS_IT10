@@ -19,8 +19,12 @@ const Register: React.FC = () => {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!phone.trim()) {
+      setError('Phone number is required');
+      return;
+    }
     try {
-      const user = await register({ fullname, username, password, email: email || undefined, phone: phone || undefined });
+      const user = await register({ fullname, username, password, email: email || undefined, phone: phone.trim() });
       if (user.role === 'admin') navigate('/admin/dashboard');
       else if (user.role === 'seller' || user.role === 'reseller') navigate('/seller/dashboard');
       else navigate('/customer');
@@ -90,13 +94,14 @@ const Register: React.FC = () => {
           />
         </div>
         <div>
-          <label htmlFor="phone" className="mb-1.5 block text-sm font-semibold text-gray-700">Phone (optional)</label>
+          <label htmlFor="phone" className="mb-1.5 block text-sm font-semibold text-gray-700">Phone Number</label>
           <input
             id="phone"
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+            required
           />
         </div>
         <div>

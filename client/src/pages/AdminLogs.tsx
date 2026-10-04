@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../lib/axios';
 import SearchIcon from '../components/common/SearchIcon';
+import PrintIcon from '../components/common/PrintIcon';
 
 type LogEntry = {
   id: number;
@@ -42,28 +43,37 @@ const AdminLogs: React.FC = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      {/* SCREEN VIEW */}
+      <div className="space-y-6 print:hidden">
         {/* Header */}
         <div
-          className="rounded-3xl p-6 text-white shadow-sm"
+          className="rounded-3xl p-6 text-white shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
           style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
         >
-          <p className="text-sm uppercase tracking-[0.2em] text-emerald-100 font-semibold">Audit Logs</p>
-          <h1 className="mt-2 text-3xl font-semibold">System Activity Trail</h1>
+          <div>
+            <h1 className="text-2xl font-bold">Audit Logs</h1>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="print:hidden inline-flex items-center justify-center gap-2 rounded-xl bg-white/20 hover:bg-white/30 border border-white/30 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition backdrop-blur-sm cursor-pointer self-start sm:self-auto"
+          >
+            <PrintIcon className="h-4 w-4" />
+            <span>Print Report</span>
+          </button>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div>
-              <p className="text-sm text-slate-500">Recent activity</p>
-              <h3 className="mt-1 text-2xl font-semibold text-slate-900">Audit Trail</h3>
+              <h3 className="text-xl font-bold text-slate-900">Audit Trail</h3>
             </div>
             <div className="relative flex items-center min-w-[240px] max-w-sm">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <SearchIcon className="h-4 w-4 text-slate-400" />
               </div>
               <input
-                className="w-full rounded-2xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-emerald-500"
+                className="w-full rounded-2xl border border-slate-200 bg-white pl-9 pr-4 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-brand"
                 placeholder="Search logs by user or activity"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -125,6 +135,95 @@ const AdminLogs: React.FC = () => {
                 Next
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* FORMAL PRINT REPORT LAYOUT (PLAIN WHITE, FORMAL HEADERS, NO COLOR CARDS) */}
+      <div className="hidden print:block text-slate-900 bg-white font-sans text-xs p-2">
+        {/* Letterhead Header */}
+        <div className="border-b-2 border-slate-900 pb-3 mb-5">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-600">PoultryLink Agricultural Marketplace</p>
+              <h1 className="text-xl font-bold uppercase text-slate-950 mt-0.5">
+                System Audit Trail & Security Logs Report
+              </h1>
+              <p className="text-xs text-slate-600 mt-1">
+                System Administration &bull; Security & Operational Audit Log Archive
+                {search ? <span> &bull; Filter: "{search}"</span> : null}
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="inline-block border-2 border-slate-900 px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-900">
+                Official Audit Report
+              </div>
+              <p className="text-[11px] text-slate-600 mt-2">
+                Date: {new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
+              <p className="text-[11px] text-slate-600">
+                Time: {new Date().toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Audit Log Table */}
+        <div className="mb-6">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b border-slate-400 pb-1 mb-2">
+            I. Itemized Security & System Activity Records
+          </h2>
+          <table className="w-full border-collapse border border-slate-400 text-xs">
+            <thead>
+              <tr className="bg-slate-100 text-slate-800">
+                <th className="p-2 border border-slate-400 text-left font-semibold w-16">Log #</th>
+                <th className="p-2 border border-slate-400 text-left font-semibold w-48">User Account</th>
+                <th className="p-2 border border-slate-400 text-left font-semibold">Activity Description</th>
+                <th className="p-2 border border-slate-400 text-left font-semibold w-36">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="p-3 text-center text-slate-500 border border-slate-300">
+                    No log records found.
+                  </td>
+                </tr>
+              ) : (
+                logs.map((log) => (
+                  <tr key={log.id} className="border-b border-slate-300">
+                    <td className="p-2 border border-slate-300 font-mono text-[10px]">#{log.id}</td>
+                    <td className="p-2 border border-slate-300 font-semibold">
+                      {log.user ? `${log.user.fullname} (${log.user.username})` : 'System Automated'}
+                    </td>
+                    <td className="p-2 border border-slate-300">{log.activity}</td>
+                    <td className="p-2 border border-slate-300 text-slate-600 text-[10px]">
+                      {new Date(log.created_at).toLocaleString('en-PH', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Signature Line */}
+        <div className="mt-12 pt-6 border-t border-slate-300 flex justify-between text-xs text-slate-700">
+          <div>
+            <p className="font-semibold">Generated & Certified By:</p>
+            <div className="mt-8 border-b border-slate-400 w-48"></div>
+            <p className="mt-1">System Security Administrator</p>
+          </div>
+          <div>
+            <p className="font-semibold">Reviewed & Verified By:</p>
+            <div className="mt-8 border-b border-slate-400 w-48"></div>
+            <p className="mt-1">Information Systems Officer</p>
           </div>
         </div>
       </div>

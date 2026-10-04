@@ -18,7 +18,8 @@ type AuthContextType = {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (username: string, password: string, business_name?: string) => Promise<User>;
+  initializing: boolean;
+  login: (username: string, password: string, business_name?: string, phone?: string) => Promise<User>;
   register: (payload: {
     fullname: string;
     username?: string;
@@ -48,14 +49,26 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const normalizeRole = (role: string) => (role === 'reseller' ? 'seller' : role as User['role']);
 
-  const [user, setUser] = useState<User | null>(() => {
-    const raw = localStorage.getItem('poultry_user');
-    if (!raw) return null;
-    const saved = JSON.parse(raw) as User;
-    return { ...saved, role: normalizeRole(saved.role) };
-  });
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('poultry_token'));
+  const [user, setUser] = useState<User | null>(() => {
+    const savedToken = localStorage.getItem('poultry_token');
+    const raw = localStorage.getItem('poultry_user');
+    if (!savedToken || !raw) {
+      localStorage.removeItem('poultry_user');
+      localStorage.removeItem('poultry_token');
+      return null;
+    }
+    try {
+      const saved = JSON.parse(raw) as User;
+      return { ...saved, role: normalizeRole(saved.role) };
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState<boolean>(() => {
+    return Boolean(localStorage.getItem('poultry_token'));
+  });
 
   useEffect(() => {
     if (token) {
@@ -74,23 +87,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   useEffect(() => {
+    const handleUnauthorized = () => {
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem('poultry_token');
+      localStorage.removeItem('poultry_user');
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, []);
+
+  useEffect(() => {
     const bootstrap = async () => {
       const savedToken = localStorage.getItem('poultry_token');
-      if (!savedToken || user) return;
+      if (!savedToken) {
+        setUser(null);
+        setToken(null);
+        setInitializing(false);
+        return;
+      }
 
       try {
         const res = await api.get('/user');
         const userData = res.data.user as User;
         const normalizedUser = { ...userData, role: normalizeRole(userData.role) };
         setUser(normalizedUser);
-      } catch {
-        setUser(null);
-        setToken(null);
+        setToken(savedToken);
+      } catch (err: any) {
+        if (err?.response?.status === 401 || err?.response?.status === 403) {
+          setUser(null);
+          setToken(null);
+          localStorage.removeItem('poultry_token');
+          localStorage.removeItem('poultry_user');
+        }
+      } finally {
+        setInitializing(false);
       }
     };
 
     bootstrap();
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     if (!user || !token || (user.role !== 'seller' && user.role !== 'reseller')) return;
@@ -120,7 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(t);
   };
 
-  const login = async (username: string, password: string, business_name?: string) => {
+  const login = async (username: string, password: string, business_name?: string, phone?: string) => {
     setLoading(true);
     try {
       const payload: any = { password };
@@ -128,6 +165,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         payload.business_name = business_name;
       } else {
         payload.username = username;
+      }
+      if (phone) {
+        payload.phone = phone;
       }
       const res = await api.post('/login', payload);
       const { user: u, token: t } = res.data;
@@ -214,7 +254,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, login, register, googleLogin, updateProfile, logout, logActivity, setUser }}
+      value={{ user, token, loading, initializing, login, register, googleLogin, updateProfile, logout, logActivity, setUser }}
     >
       {children}
     </AuthContext.Provider>

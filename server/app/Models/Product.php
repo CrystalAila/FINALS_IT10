@@ -9,12 +9,14 @@ class Product extends Model
 {
     protected $fillable = [
         'farm_id', 'name', 'description', 'image', 'category',
+        'unit_type', 'increment_step',
         'price_small', 'price_medium', 'price_large', 'price_jumbo',
         'stock', 'stock_small', 'stock_medium', 'stock_large', 'stock_jumbo',
         'farm_origin', 'rating', 'is_active', 'is_flagged',
     ];
 
     protected $casts = [
+        'increment_step' => 'decimal:2',
         'price_small' => 'decimal:2',
         'price_medium' => 'decimal:2',
         'price_large' => 'decimal:2',

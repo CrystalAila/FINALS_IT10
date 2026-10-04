@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import AdminLayout from '../layouts/AdminLayout';
 import api from '../lib/axios';
 import SearchIcon from '../components/common/SearchIcon';
+import { resolveProductImage } from '../types/marketplace';
+import { useToast } from '../context/ToastContext';
 
 interface ProductItem {
   id: number;
@@ -62,6 +64,7 @@ interface MarketStats {
 }
 
 const AdminMarket: React.FC = () => {
+  const { toast } = useToast();
   const [sellers, setSellers] = useState<SellerItem[]>([]);
   const [stats, setStats] = useState<MarketStats>({
     total_sellers: 0,
@@ -124,8 +127,10 @@ const AdminMarket: React.FC = () => {
           ),
         }))
       );
+      toast.success(updatedFlag ? 'Product flagged for review.' : 'Product flag removed.');
     } catch (err) {
       console.error('Failed to toggle product flag:', err);
+      toast.error('Failed to update product flag status.');
     } finally {
       setFlaggingProductId(null);
     }
@@ -201,8 +206,7 @@ const AdminMarket: React.FC = () => {
           className="rounded-3xl p-6 text-white shadow-sm"
           style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
         >
-          <p className="text-sm uppercase tracking-[0.2em] text-emerald-100 font-semibold">Market Monitoring</p>
-          <h1 className="mt-2 text-3xl font-semibold">Registered Sellers & Marketplace Health</h1>
+          <h1 className="text-2xl font-bold">Market Monitoring</h1>
         </div>
 
         {/* Top Summary Metrics */}
@@ -215,21 +219,21 @@ const AdminMarket: React.FC = () => {
 
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-semibold text-slate-500">Verified Sellers</p>
-            <p className="mt-2 text-3xl font-bold text-emerald-600">{stats.verified_sellers.toLocaleString()}</p>
-            <p className="mt-1 text-xs text-emerald-600 font-medium">
+            <p className="mt-2 text-3xl font-bold text-slate-900">{stats.verified_sellers.toLocaleString()}</p>
+            <p className="mt-1 text-xs text-slate-500 font-medium">
               {stats.total_sellers > 0 ? Math.round((stats.verified_sellers / stats.total_sellers) * 100) : 0}% compliance rate
             </p>
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-semibold text-slate-500">Total Transactions</p>
-            <p className="mt-2 text-3xl font-bold text-blue-600">{stats.total_transactions.toLocaleString()}</p>
+            <p className="mt-2 text-3xl font-bold text-slate-900">{stats.total_transactions.toLocaleString()}</p>
             <p className="mt-1 text-xs text-slate-400">All customer orders</p>
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-semibold text-slate-500">Marketplace Sales</p>
-            <p className="mt-2 text-3xl font-bold text-emerald-700">{formatPHP(stats.total_revenue)}</p>
+            <p className="mt-2 text-3xl font-bold text-slate-900">{formatPHP(stats.total_revenue)}</p>
             <p className="mt-1 text-xs text-slate-400">Completed volume</p>
           </div>
         </div>
@@ -238,8 +242,7 @@ const AdminMarket: React.FC = () => {
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-slate-500">Seller directory & operations</p>
-              <h2 className="text-2xl font-semibold text-slate-900">Registered Sellers</h2>
+              <h2 className="text-xl font-bold text-slate-900">Registered Sellers</h2>
             </div>
             <div className="flex gap-2 flex-wrap items-center">
               <div className="relative flex items-center min-w-[240px]">
@@ -285,7 +288,8 @@ const AdminMarket: React.FC = () => {
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-200 text-xs uppercase font-semibold text-slate-500 tracking-wider">
-                  <th className="py-3 px-4">Seller</th>
+                  <th className="py-3 px-4">Full Name</th>
+                  <th className="py-3 px-4">Business Name</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4">Products</th>
                   <th className="py-3 px-4">Total Revenue</th>
@@ -295,14 +299,14 @@ const AdminMarket: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-slate-500">
+                    <td colSpan={6} className="py-12 text-center text-slate-500">
                       <span className="w-5 h-5 border-2 border-emerald-900 border-t-transparent rounded-full animate-spin inline-block mr-2 align-middle"></span>
                       Loading registered sellers...
                     </td>
                   </tr>
                 ) : filteredSellers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-slate-400 italic">
+                    <td colSpan={6} className="py-12 text-center text-slate-400 italic">
                       No sellers found matching the criteria.
                     </td>
                   </tr>
@@ -313,31 +317,36 @@ const AdminMarket: React.FC = () => {
                       onClick={() => setSelectedSeller(seller)}
                       className="hover:bg-slate-50/80 transition cursor-pointer group"
                     >
-                      <td className="py-4 px-4">
-                        <div>
-                          <p className="font-semibold text-slate-900 group-hover:text-emerald-700 transition">
-                            {seller.fullname}
-                          </p>
-                          {seller.farm?.name && (
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              {seller.farm.name}
-                            </p>
-                          )}
-                        </div>
+                      {/* Full Name */}
+                      <td className="py-4 px-4 font-semibold text-slate-900 group-hover:text-emerald-700 transition">
+                        {seller.fullname}
                       </td>
+
+                      {/* Business Name */}
+                      <td className="py-4 px-4 text-sm font-medium text-slate-700">
+                        {seller.farm?.name || '—'}
+                      </td>
+
+                      {/* Status */}
                       <td className="py-4 px-4">
                         <span className={`inline-block rounded-2xl px-3 py-1 text-xs font-semibold ${getStatusBadge(seller.display_status)}`}>
                           {seller.display_status}
                         </span>
                       </td>
+
+                      {/* Products */}
                       <td className="py-4 px-4 text-sm font-semibold text-slate-700">
                         <span className="rounded-xl bg-slate-100 px-2.5 py-1 text-xs">
                           {seller.products_count} {seller.products_count === 1 ? 'product' : 'products'}
                         </span>
                       </td>
+
+                      {/* Total Revenue */}
                       <td className="py-4 px-4 text-sm font-bold text-emerald-700">
                         {formatPHP(seller.total_revenue)}
                       </td>
+
+                      {/* Action */}
                       <td className="py-4 px-4 text-right">
                         <button
                           onClick={(e) => {
@@ -501,17 +510,14 @@ const AdminMarket: React.FC = () => {
                           <tr key={product.id} className="hover:bg-slate-50 transition">
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-3">
-                                {product.image ? (
-                                  <img
-                                    src={product.image}
-                                    alt={product.name}
-                                    className="h-10 w-10 rounded-xl object-cover border border-slate-200"
-                                  />
-                                ) : (
-                                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-xs font-semibold text-slate-400">
-                                    Item
-                                  </div>
-                                )}
+                                <img
+                                  src={resolveProductImage(product.image, product.category)}
+                                  alt={product.name}
+                                  onError={(e) => {
+                                    e.currentTarget.src = resolveProductImage(null, product.category);
+                                  }}
+                                  className="h-10 w-10 rounded-xl object-cover border border-slate-200"
+                                />
                                 <div>
                                   <p className="font-semibold text-slate-900">{product.name}</p>
                                   {product.farm_origin && (

@@ -142,12 +142,8 @@ const SellerDashboard: React.FC = () => {
           </div>
         </div>
       )}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-brand">Seller dashboard</p>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-900">Your farm shop overview</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-600">Stay on top of sales, stock levels, and order flow for your PoultryLink shop.</p>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -155,7 +151,6 @@ const SellerDashboard: React.FC = () => {
           <div key={card.title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-card">
             <p className="text-sm font-medium text-slate-500">{card.title}</p>
             <p className="mt-4 text-3xl font-semibold text-slate-900">{card.value}</p>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{card.description}</p>
           </div>
         ))}
       </div>
@@ -163,10 +158,7 @@ const SellerDashboard: React.FC = () => {
       <section className="mt-8 grid gap-4 xl:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-card">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">Shop performance</h2>
-              <p className="mt-1 text-sm text-slate-500">Fast view of recent trends and market throughput.</p>
-            </div>
+            <h2 className="text-xl font-semibold text-slate-900">Shop Performance</h2>
             <span className="rounded-full bg-brand/10 px-3 py-1 text-sm font-semibold text-brand">Live</span>
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -187,10 +179,7 @@ const SellerDashboard: React.FC = () => {
 
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-card">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">Stock health</h2>
-              <p className="mt-1 text-sm text-slate-500">A quick check for critical listings and restock needs.</p>
-            </div>
+            <h2 className="text-xl font-semibold text-slate-900">Stock Health</h2>
             <span
               className={`rounded-full px-3 py-1 text-sm font-semibold ${
                 hasAttention ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-800'

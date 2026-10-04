@@ -42,7 +42,7 @@ class AuthController extends Controller
             'business_name' => [$request->input('role') === 'seller' ? 'required' : 'nullable', 'string', 'max:255', $request->input('role') === 'seller' ? 'unique:users,business_name' : ''],
             'username' => ['required', 'string', 'max:255', 'alpha_num', 'unique:users,username'],
             'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
-            'phone' => ['nullable', 'string', 'max:30'],
+            'phone' => ['required', 'string', 'max:30'],
             'password' => ['required', 'string', 'min:6', 'max:72'],
             'role' => ['nullable', 'in:customer,reseller,seller,admin'],
             'status' => ['nullable', 'in:pending,under_review,active,suspended,verified,rejected'],
@@ -52,6 +52,9 @@ class AuthController extends Controller
             $rules['permit'] = ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'];
             $rules['permit_issue_date'] = ['required', 'date'];
             $rules['permit_expiry_date'] = ['required', 'date', 'after_or_equal:permit_issue_date'];
+            $rules['latitude'] = ['nullable', 'numeric', 'between:-90,90'];
+            $rules['longitude'] = ['nullable', 'numeric', 'between:-180,180'];
+            $rules['full_address'] = ['nullable', 'string', 'max:500'];
         }
 
         $validator = Validator::make($request->all(), $rules);
@@ -90,6 +93,11 @@ class AuthController extends Controller
                 $user->save();
             }
 
+            $location = $request->input('full_address') ?: 'Roxas City, Capiz';
+            $fullAddress = $request->input('full_address') ?: null;
+            $lat = $request->filled('latitude') ? $request->input('latitude') : null;
+            $lng = $request->filled('longitude') ? $request->input('longitude') : null;
+
             \App\Models\Farm::create([
                 'user_id' => $user->id,
                 'name' => $data['business_name'] ?? ($user->fullname . ' Farm'),
@@ -97,7 +105,10 @@ class AuthController extends Controller
                 'permit_file' => $permitPath,
                 'permit_issue_date' => $issueDate ? $issueDate->toDateString() : null,
                 'permit_expiry_date' => $expiryDate ? $expiryDate->toDateString() : null,
-                'location' => 'Roxas City, Capiz', // Default placeholder location
+                'location' => $location,
+                'full_address' => $fullAddress,
+                'latitude' => $lat,
+                'longitude' => $lng,
                 'description' => 'Newly registered local poultry farm.',
                 'rating' => 5.0,
             ]);
@@ -118,12 +129,13 @@ class AuthController extends Controller
     {
         $rules = [
             'password' => ['required', 'string', 'min:6', 'max:72'],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
         ];
 
         if ($request->filled('business_name')) {
             $rules['business_name'] = ['required', 'string', 'max:255'];
         } else {
-            $rules['username'] = ['required', 'string', 'alpha_num'];
+            $rules['username'] = ['required', 'string'];
         }
 
         $validator = Validator::make($request->all(), $rules);
@@ -136,11 +148,29 @@ class AuthController extends Controller
         if ($request->filled('business_name')) {
             $user = User::where('business_name', $request->input('business_name'))->first();
         } else {
-            $user = User::where('username', $request->input('username'))->first();
+            $identifier = $request->input('username');
+            $user = User::where('username', $identifier)
+                ->orWhere('email', $identifier)
+                ->orWhere('phone', $identifier)
+                ->first();
         }
 
         if (! $user || ! $user->password || ! Hash::check($request->input('password'), $user->password)) {
             return response()->json(['message' => 'Invalid credentials'], 401);
+        }
+
+        if ($request->filled('phone')) {
+            $phoneInput = trim($request->input('phone'));
+            if (empty($user->phone)) {
+                $user->phone = $phoneInput;
+                $user->save();
+            } else {
+                $cleanInput = preg_replace('/[^0-9]/', '', $phoneInput);
+                $cleanUser = preg_replace('/[^0-9]/', '', $user->phone);
+                if (!empty($cleanInput) && !empty($cleanUser) && $cleanInput !== $cleanUser) {
+                    return response()->json(['message' => 'Phone number does not match account records.'], 401);
+                }
+            }
         }
 
         $token = $user->createToken('api-token')->plainTextToken;
@@ -328,7 +358,7 @@ class AuthController extends Controller
             'google_id' => ['required', 'string'],
             'fullname' => ['required', 'string', 'max:255', 'regex:/^[\pL\s\.\'\-]+$/u'],
             'email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:30'],
+            'phone' => ['required', 'string', 'max:30'],
             'role' => ['required', 'in:customer,seller,reseller'],
         ];
 

@@ -1,62 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import AuthLeftPanel from '../components/customer/AuthLeftPanel';
 
-// Chicken in Cart Brand Logo SVG
+// Official PoultryLink Business Logo
 const ChickenInCartLogo: React.FC<{ size?: 'sm' | 'lg'; light?: boolean }> = ({ size = 'sm', light = false }) => {
   const isLarge = size === 'lg';
   return (
-    <div className={`relative inline-flex items-center justify-center ${isLarge ? 'h-36 w-36' : 'h-12 w-12'}`}>
-      <svg
-        viewBox="0 0 80 80"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-full w-full drop-shadow-md"
-        aria-hidden="true"
-      >
-        {/* Shopping Cart Handle & Frame */}
-        <path
-          d="M12 22H20L26 50H58L66 26H23"
-          stroke={light ? '#FFFFFF' : '#166534'}
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        {/* Cart Wire Grids */}
-        <path
-          d="M28 34H62M30 42H56M36 26V50M46 26V50M56 26V46"
-          stroke={light ? 'rgba(255,255,255,0.45)' : 'rgba(22,101,52,0.25)'}
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        {/* Wheels */}
-        <circle cx="30" cy="59" r="4.5" fill={light ? '#FFFFFF' : '#166534'} />
-        <circle cx="30" cy="59" r="2" fill={light ? '#166534' : '#FFFFFF'} />
-        <circle cx="54" cy="59" r="4.5" fill={light ? '#FFFFFF' : '#166534'} />
-        <circle cx="54" cy="59" r="2" fill={light ? '#166534' : '#FFFFFF'} />
-
-        {/* Chicken Inside Cart */}
-        {/* Red Comb */}
-        <path
-          d="M37 12C37 9.5 39 8 41 9C42.5 7.5 45.5 8 46 10C47.5 8.5 50 9.5 50 12C50 13 48 14 47 14H39C38 14 37 13 37 12Z"
-          fill="#EF4444"
-        />
-        {/* Chicken Body */}
-        <path
-          d="M37 23C35 18 38 13 43 13C48 13 51 17 51 22C55 22 59 25 57 31C54 37 48 39 43 39C37 39 33 35 33 30C33 26 35 24 37 23Z"
-          fill={light ? '#FFFBEB' : '#F59E0B'}
-        />
-        {/* Beak */}
-        <path d="M50 18L55 20L50 22Z" fill="#F97316" />
-        {/* Eye */}
-        <circle cx="46" cy="17" r="1.5" fill="#1F2937" />
-        {/* Wing Detail */}
-        <path
-          d="M39 26C42 25 47 26 48 30C48 34 44 35 40 34C38 33 38 28 39 26Z"
-          fill={light ? '#FEF3C7' : '#D97706'}
-        />
-      </svg>
+    <div
+      className={`relative inline-flex items-center justify-center rounded-2xl bg-white p-1.5 shadow-sm shrink-0 overflow-hidden ${
+        isLarge ? 'h-28 w-28 rounded-3xl p-3' : 'h-11 w-11'
+      } ${light ? 'ring-2 ring-white/20' : 'border border-slate-200/60'}`}
+    >
+      <img
+        src="/logo.png"
+        alt="PoultryLink Logo"
+        className="h-full w-full object-contain"
+      />
     </div>
   );
 };
@@ -67,10 +28,17 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { login, loading, googleLogin } = useAuth();
+  const { user, login, loading, googleLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const flashMessage = (location.state as { message?: string } | null)?.message;
+
+  useEffect(() => {
+    const token = localStorage.getItem('poultry_token');
+    if (user && token) {
+      handleSuccessfulAuth(user.role);
+    }
+  }, [user]);
 
   const redirectByRole = (role: string) => {
     if (role === 'customer') navigate('/customer');
@@ -79,12 +47,21 @@ const Login: React.FC = () => {
     else navigate('/');
   };
 
+  const handleSuccessfulAuth = (role: string) => {
+    const fromPath = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+    if (fromPath?.pathname && fromPath.pathname !== '/login') {
+      navigate(`${fromPath.pathname}${fromPath.search || ''}`, { replace: true });
+    } else {
+      redirectByRole(role);
+    }
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     try {
       const user = await login(username, password);
-      redirectByRole(user.role);
+      handleSuccessfulAuth(user.role);
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Login failed';
       setError(msg);
@@ -94,7 +71,7 @@ const Login: React.FC = () => {
   const handleGoogleSuccess = (user: { id: number; fullname: string; username: string; role: string }) => {
     const token = localStorage.getItem('poultry_token');
     if (token) googleLogin(user as any, token);
-    redirectByRole(user.role);
+    handleSuccessfulAuth(user.role);
   };
 
   const handleGoogleRedirect = () => {
@@ -104,47 +81,8 @@ const Login: React.FC = () => {
 
   return (
     <div className="flex min-h-screen w-full flex-col lg:flex-row bg-white">
-      {/* LEFT SIDE: Green Gradient with Large Logo & Tagline */}
-      <div
-        className="relative hidden lg:flex lg:w-1/2 flex-col justify-between overflow-hidden p-12 text-white"
-        style={{
-          background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)',
-        }}
-      >
-
-        {/* Top Mini Brand Bar */}
-        <div className="relative z-10 flex items-center gap-3">
-          <ChickenInCartLogo size="sm" light />
-          <span className="text-xl font-bold tracking-tight">
-            Poultry<span className="text-emerald-300">Link</span>
-          </span>
-        </div>
-
-        {/* Center Hero with Large Chicken-in-Cart Logo & Tagline */}
-        <div className="relative z-10 my-auto flex flex-col items-center text-center">
-          <div className="mb-8 flex items-center justify-center rounded-3xl bg-white/10 p-6 backdrop-blur-md shadow-2xl shadow-black/20 border border-white/15">
-            <ChickenInCartLogo size="lg" light />
-          </div>
-
-          <h2 className="text-4xl font-extrabold tracking-tight text-white drop-shadow-sm">
-            Poultry<span className="text-emerald-300">Link</span>
-          </h2>
-
-          <p className="mt-4 text-xs sm:text-sm font-semibold tracking-[0.25em] text-emerald-100 uppercase">
-            FARM TO YOU. LINKED WITH CARE.
-          </p>
-
-          <p className="mt-4 max-w-sm text-sm text-emerald-100/80 leading-relaxed">
-            Connecting local Capiz poultry farms directly with households, restaurants, and businesses.
-          </p>
-        </div>
-
-        {/* Footer info */}
-        <div className="relative z-10 flex items-center justify-between text-xs text-emerald-200/70">
-          <span>© 2026 PoultryLink. All rights reserved.</span>
-          <span>Fresh • Local • Trusted</span>
-        </div>
-      </div>
+      {/* LEFT SIDE: Exactly as user specified */}
+      <AuthLeftPanel />
 
       {/* RIGHT SIDE: Clean White Login Form */}
       <div className="flex w-full flex-col justify-center px-6 py-10 sm:px-12 lg:w-1/2 lg:px-16 xl:px-24">
@@ -159,13 +97,9 @@ const Login: React.FC = () => {
 
           {/* Header */}
           <div className="mb-8">
-            <div className="hidden lg:flex items-center gap-2.5 mb-4">
-              <ChickenInCartLogo size="sm" />
-              <span className="text-xl font-bold text-gray-900">
-                Poultry<span className="text-brand">Link</span>
-              </span>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Welcome to PoultryLink</h1>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+              Welcome to Poultry<span className="text-brand">Link</span>
+            </h1>
             <p className="mt-2 text-sm text-gray-500">
               Please enter your details to sign in to your account.
             </p>
@@ -185,10 +119,10 @@ const Login: React.FC = () => {
 
           {/* Form */}
           <form onSubmit={submit} className="space-y-5">
-            {/* Email / Username Field */}
+            {/* Username Field */}
             <div>
               <label htmlFor="username" className="mb-1.5 block text-sm font-semibold text-gray-700">
-                Email
+                Username
               </label>
               <input
                 id="username"
@@ -197,17 +131,25 @@ const Login: React.FC = () => {
                 autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your email or username"
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-600/20"
+                placeholder="Enter your username"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                 required
               />
             </div>
 
             {/* Password Field */}
             <div>
-              <label htmlFor="password" className="mb-1.5 block text-sm font-semibold text-gray-700">
-                Password
-              </label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-700">
+                  Password
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs font-semibold text-brand hover:text-brand-dark transition"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   id="password"
@@ -216,15 +158,14 @@ const Login: React.FC = () => {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 pr-11 text-sm text-gray-900 outline-none transition focus:border-green-600 focus:ring-2 focus:ring-green-600/20"
+                  placeholder="Enter your password"
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 pr-11 text-sm text-gray-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((p) => !p)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-500 hover:text-gray-700 focus:outline-none"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
@@ -238,14 +179,14 @@ const Login: React.FC = () => {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-green-700 focus:ring-green-600"
+                  className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
                 />
                 <span className="text-sm text-gray-600">Remember me</span>
               </label>
 
               <Link
                 to="/forgot-password"
-                className="text-sm font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+                className="text-sm font-medium text-brand hover:text-brand-dark hover:underline"
               >
                 Forgot password?
               </Link>
@@ -297,17 +238,13 @@ const Login: React.FC = () => {
             </Link>
           </p>
 
-          {/* Preserved Seller Portal & Demo Accounts Navigation */}
+          {/* Seller Portal Navigation */}
           <div className="mt-6 pt-5 border-t border-gray-100 flex flex-col gap-3">
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>Are you a poultry seller?</span>
               <Link to="/seller-login" className="font-semibold text-brand hover:underline">
                 Seller Portal →
               </Link>
-            </div>
-            <div className="rounded-lg bg-gray-50 p-2.5 text-[11px] text-gray-500 flex justify-between">
-              <span>Customer: <code className="text-gray-700">customer</code> / <code className="text-gray-700">password123</code></span>
-              <span>Admin: <code className="text-gray-700">admin</code></span>
             </div>
           </div>
         </div>

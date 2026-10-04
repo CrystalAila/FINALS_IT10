@@ -24,7 +24,13 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::get('/shops', [FarmController::class, 'getShops']);
+Route::get('/shops/nearby', [FarmController::class, 'getNearbyShops']);
+Route::get('/stores/nearby', [FarmController::class, 'getNearbyShops']);
+Route::get('/farms', [FarmController::class, 'getShops']);
+Route::get('/farms/nearby', [FarmController::class, 'getNearbyShops']);
 Route::get('/system/status', [SettingController::class, 'status']);
+Route::get('/unauthorized', fn () => response()->json(['message' => 'Unauthenticated.'], 401))->name('login');
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -57,15 +63,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/seller/orders', [OrderController::class, 'sellerIndex']);
         Route::get('/seller/orders/{id}', [OrderController::class, 'sellerShow']);
         Route::put('/seller/orders/{id}/status', [OrderController::class, 'updateStatus']);
+        Route::put('/seller/orders/{id}/weigh', [OrderController::class, 'weighOrder']);
         Route::put('/seller/orders/{id}/assign-rider', [OrderController::class, 'assignRider']);
 
         Route::get('/seller/riders', [RiderController::class, 'index']);
         Route::post('/seller/riders', [RiderController::class, 'store']);
+        Route::post('/seller/riders/{id}', [RiderController::class, 'update']);
+        Route::put('/seller/riders/{id}', [RiderController::class, 'update']);
         Route::delete('/seller/riders/{id}', [RiderController::class, 'destroy']);
 
         Route::get('/seller/products', [ProductController::class, 'sellerIndex']);
         Route::post('/seller/products', [ProductController::class, 'store']);
         Route::put('/seller/products/{id}', [ProductController::class, 'update']);
+        Route::delete('/seller/products/{id}', [ProductController::class, 'destroy']);
 
         // Seller Farm Shop Details
         Route::get('/seller/farm', [FarmController::class, 'show']);

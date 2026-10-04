@@ -46,6 +46,9 @@ class FarmController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'location' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'full_address' => ['nullable', 'string', 'max:500'],
             'permit' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'],
             'permit_issue_date' => ['nullable', 'required_with:permit', 'date'],
             'permit_expiry_date' => ['nullable', 'required_with:permit', 'date', 'after_or_equal:permit_issue_date'],
@@ -60,6 +63,15 @@ class FarmController extends Controller
         $farm->name = $data['name'];
         $farm->location = $data['location'];
         $farm->description = $data['description'] ?? null;
+        if (array_key_exists('latitude', $data)) {
+            $farm->latitude = $data['latitude'];
+        }
+        if (array_key_exists('longitude', $data)) {
+            $farm->longitude = $data['longitude'];
+        }
+        if (array_key_exists('full_address', $data)) {
+            $farm->full_address = $data['full_address'];
+        }
 
         $permitChanged = $request->hasFile('permit');
         
@@ -166,6 +178,99 @@ class FarmController extends Controller
 
         return response()->json([
             'favorites' => $favorites,
+        ]);
+    }
+
+    /**
+     * Get all approved farm shops for customer store finder and nearby discovery.
+     */
+    public function getShops(Request $request)
+    {
+        if ($request->has('lat') || $request->has('latitude')) {
+            return $this->getNearbyShops($request);
+        }
+
+        $shops = Farm::where('permit_status', 'approved')
+            ->select('id', 'name', 'location', 'full_address', 'latitude', 'longitude', 'rating', 'logo', 'description')
+            ->withCount(['products' => function ($q) {
+                $q->where('is_active', true);
+            }])
+            ->get();
+
+        return response()->json(['shops' => $shops, 'stores' => $shops]);
+    }
+
+    /**
+     * Get nearby stores within a given radius using the Haversine formula.
+     * Accepts: lat, lng, radius (default 10 km).
+     */
+    public function getNearbyShops(Request $request)
+    {
+        $lat = $request->query('lat', $request->query('latitude'));
+        $lng = $request->query('lng', $request->query('longitude'));
+        $radius = (float) $request->query('radius', 10);
+
+        if ($lat === null || $lng === null || $lat === '' || $lng === '') {
+            return response()->json([
+                'message' => 'Latitude and longitude are required.',
+                'stores' => [],
+                'shops' => [],
+            ], 422);
+        }
+
+        $customerLat = (float) $lat;
+        $customerLng = (float) $lng;
+
+        // Fetch all sellers that have latitude and longitude saved
+        $farms = Farm::whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->select('id', 'user_id', 'name', 'location', 'full_address', 'latitude', 'longitude', 'rating', 'logo', 'description', 'permit_status')
+            ->withCount(['products' => function ($q) {
+                $q->where('is_active', true);
+            }])
+            ->get();
+
+        // Calculate distance using Haversine formula (Earth radius = 6371 km)
+        $earthRadius = 6371;
+
+        $nearby = $farms->map(function ($farm) use ($customerLat, $customerLng, $earthRadius) {
+            $farmLat = (float) $farm->latitude;
+            $farmLng = (float) $farm->longitude;
+
+            $dLat = deg2rad($farmLat - $customerLat);
+            $dLng = deg2rad($farmLng - $customerLng);
+
+            $a = sin($dLat / 2) * sin($dLat / 2) +
+                cos(deg2rad($customerLat)) * cos(deg2rad($farmLat)) *
+                sin($dLng / 2) * sin($dLng / 2);
+            $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+            $distance = $earthRadius * $c;
+
+            $roundedDistance = round($distance, 2);
+            $farm->distance = $roundedDistance;
+            $farm->distance_km = $roundedDistance;
+            $farm->distance_formatted = $roundedDistance < 1
+                ? round($roundedDistance * 1000) . ' m away'
+                : $roundedDistance . ' km away';
+            $farm->address = $farm->full_address ?: $farm->location;
+
+            return $farm;
+        })
+        ->filter(function ($farm) use ($radius) {
+            return $farm->distance <= $radius;
+        })
+        ->sortBy('distance')
+        ->values();
+
+        return response()->json([
+            'stores' => $nearby,
+            'shops' => $nearby,
+            'count' => $nearby->count(),
+            'radius' => $radius,
+            'customer_location' => [
+                'latitude' => $customerLat,
+                'longitude' => $customerLng,
+            ],
         ]);
     }
 }

@@ -11,10 +11,13 @@ class Farm extends Model
     protected $fillable = [
         'user_id', 'name', 'location', 'description',
         'permit_file', 'permit_status', 'permit_issue_date', 'permit_expiry_date', 'logo', 'rating',
+        'latitude', 'longitude', 'full_address',
     ];
 
     protected $casts = [
         'rating' => 'decimal:2',
+        'latitude' => 'decimal:7',
+        'longitude' => 'decimal:7',
         'permit_issue_date' => 'date',
         'permit_expiry_date' => 'date',
     ];

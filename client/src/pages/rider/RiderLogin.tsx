@@ -34,15 +34,6 @@ const RiderLogin: React.FC = () => {
     <AuthLayout
       title="Rider Portal"
       subtitle="Sign in to view your assigned deliveries"
-      footer={
-        <>
-          <div className="mt-6 rounded-xl bg-gray-50 p-4 text-xs text-gray-500">
-            <p className="font-semibold text-gray-700">Demo account</p>
-            <p className="mt-1">Username: <code>papa</code></p>
-            <p>Password: <code>password123</code></p>
-          </div>
-        </>
-      }
     >
       {flashMessage && (
         <div className="mt-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">{flashMessage}</div>

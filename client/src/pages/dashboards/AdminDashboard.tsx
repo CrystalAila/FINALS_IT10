@@ -56,23 +56,23 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const StatCard = ({ label, value, trend, color, onClick, badge }: any) => (
+  const StatCard = ({ label, value, trend, onClick, badge }: any) => (
     <div
       onClick={onClick}
       className={`rounded-3xl border border-slate-200 bg-white p-6 shadow-sm ${
-        onClick ? 'cursor-pointer hover:border-emerald-500 hover:shadow-md transition' : ''
+        onClick ? 'cursor-pointer hover:border-slate-300 hover:shadow-md transition' : ''
       }`}
     >
       <div>
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-slate-500">{label}</p>
           {badge && (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+            <span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
               {badge}
             </span>
           )}
         </div>
-        <p className={`mt-2 text-3xl font-bold ${color}`}>
+        <p className="mt-2 text-3xl font-bold text-slate-900">
           {typeof value === 'number' ? value.toLocaleString() : value}
         </p>
         {trend && <p className="mt-2 text-xs text-slate-500">{trend}</p>}
@@ -88,8 +88,7 @@ const AdminDashboard: React.FC = () => {
           className="rounded-3xl p-6 text-white shadow-sm"
           style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
         >
-          <p className="text-sm uppercase tracking-[0.2em] text-emerald-100 font-semibold">Marketplace Overview</p>
-          <h1 className="mt-2 text-3xl font-semibold">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
         </div>
 
         {error && (
@@ -113,10 +112,10 @@ const AdminDashboard: React.FC = () => {
           <>
             {/* Top Stats */}
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-              <StatCard label="Registered Sellers" value={stats.registeredSellers || 0} color="text-emerald-600" />
-              <StatCard label="Verified Sellers" value={stats.verifiedSellers || 0} color="text-green-600" />
-              <StatCard label="Total Buyers" value={stats.buyers || 0} color="text-blue-600" />
-              <StatCard label="Pending Permits" value={stats.pendingPermits || 0} color="text-amber-600" />
+              <StatCard label="Registered Sellers" value={stats.registeredSellers || 0} />
+              <StatCard label="Verified Sellers" value={stats.verifiedSellers || 0} />
+              <StatCard label="Total Buyers" value={stats.buyers || 0} />
+              <StatCard label="Pending Permits" value={stats.pendingPermits || 0} />
               <StatCard
                 label="Admin Share (5%)"
                 value={`₱${Number(stats.adminShare ?? stats.revenue ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
@@ -128,7 +127,6 @@ const AdminDashboard: React.FC = () => {
                     : '5% monthly share from all sellers'
                 }
                 badge={(stats.unpaidSharesCount ?? 0) > 0 ? `${stats.unpaidSharesCount} Unpaid` : undefined}
-                color="text-emerald-600"
                 onClick={() => navigate('/admin/shares')}
               />
             </div>

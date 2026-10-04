@@ -106,9 +106,12 @@ const SellerVerification: React.FC = () => {
       <div className="max-w-2xl w-full space-y-8 bg-white border border-slate-200 shadow-xl rounded-3xl p-8 md:p-12 transition hover:shadow-2xl">
         
         {/* Header Branding */}
-        <div className="text-center">
-          <span className="font-extrabold text-2xl tracking-wider text-brand">POULTRY<span className="text-slate-800">LINK</span></span>
-          <p className="mt-2 text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">Seller Verification Portal</p>
+        <div className="text-center flex flex-col items-center">
+          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white p-1.5 shadow-sm border border-slate-200/80 shrink-0 overflow-hidden">
+            <img src="/logo.png" alt="PoultryLink Logo" className="h-full w-full object-contain" />
+          </div>
+          <span className="font-extrabold text-2xl tracking-wider text-slate-800">Poultry<span className="text-brand">Link</span></span>
+          <p className="mt-1 text-xs font-semibold tracking-[0.2em] text-slate-400 uppercase">Seller Verification Portal</p>
         </div>
 
         {/* Dynamic Status Presentation */}

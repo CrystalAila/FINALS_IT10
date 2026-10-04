@@ -30,13 +30,20 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ user, logout }) => {
 
   return (
     <aside
-      className="w-72 border-r border-emerald-900/30 text-white px-5 py-6 shadow-sm flex flex-col h-screen sticky top-0"
+      className="w-72 border-r border-emerald-900/30 text-white px-5 py-6 shadow-sm flex flex-col h-screen sticky top-0 overflow-y-auto shrink-0 z-30 print:hidden"
       style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
     >
       {/* Logo */}
-      <div className="mb-10 px-2">
-        <p className="text-xl font-bold tracking-tight text-white">Poultry Link</p>
-        <p className="text-xs text-emerald-100 font-medium">Admin Panel</p>
+      <div className="mb-10 px-2 flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white p-1 shadow-sm shrink-0 overflow-hidden">
+          <img src="/logo.png" alt="PoultryLink Logo" className="h-full w-full object-contain" />
+        </div>
+        <div>
+          <p className="text-xl font-bold tracking-tight text-white leading-tight">
+            Poultry<span className="text-brand">Link</span>
+          </p>
+          <p className="text-xs text-emerald-100 font-medium">Admin Panel</p>
+        </div>
       </div>
 
       {/* Navigation */}

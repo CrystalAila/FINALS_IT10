@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import Logo from './Logo';
+import AuthLeftPanel from './AuthLeftPanel';
 
 type AuthLayoutProps = {
   title: string;
@@ -11,24 +12,8 @@ type AuthLayoutProps = {
 export default function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
   return (
     <div className="flex min-h-screen">
-      <div
-        className="hidden w-1/2 flex-col justify-between p-12 text-white lg:flex"
-        style={{
-          background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)',
-        }}
-      >
-        <Logo light size="lg" />
-        <div className="space-y-4">
-          <h1 className="text-4xl font-bold leading-tight">
-            Fresh Poultry,<br />
-            <span className="text-brand-light">Delivered Fresh</span>
-          </h1>
-          <p className="max-w-sm text-green-100">
-            Capiz&apos;s trusted marketplace connecting local farms with customers across the region.
-          </p>
-        </div>
-        <p className="text-sm text-green-300">© 2026 PoultryLink. All rights reserved.</p>
-      </div>
+      {/* LEFT SIDE: Exactly as user specified */}
+      <AuthLeftPanel />
 
       <div className="flex w-full flex-col items-center justify-center bg-white px-6 py-12 lg:w-1/2">
         <div className="mb-8 lg:hidden">

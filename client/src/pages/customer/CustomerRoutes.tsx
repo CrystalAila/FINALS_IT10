@@ -9,12 +9,15 @@ import OrdersPage from './OrdersPage';
 import ProductDetailPage from './ProductDetailPage';
 import ProfilePage from './ProfilePage';
 import ShopDetailsPage from './ShopDetailsPage';
+import StoresNearMePage from './StoresNearMePage';
 
 export default function CustomerRoutes() {
   return (
     <Routes>
       <Route element={<CustomerLayout />}>
         <Route index element={<CustomerHomePage />} />
+        <Route path="stores-near-me" element={<StoresNearMePage />} />
+        <Route path="stores" element={<StoresNearMePage />} />
         <Route path="products/:id" element={<ProductDetailPage />} />
         <Route path="shops/:id" element={<ShopDetailsPage />} />
         <Route path="cart" element={<CartPage />} />

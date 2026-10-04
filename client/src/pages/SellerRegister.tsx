@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AuthLayout from '../components/customer/AuthLayout';
 import GoogleLoginButton from '../components/customer/GoogleLoginButton';
+import LocationPicker from '../components/common/LocationPicker';
 
 const SellerRegister: React.FC = () => {
   const [fullname, setFullname] = useState('');
@@ -11,6 +12,9 @@ const SellerRegister: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [fullAddress, setFullAddress] = useState('');
   const [permitFile, setPermitFile] = useState<File | null>(null);
   const [permitIssueDate, setPermitIssueDate] = useState('');
   const [permitExpiryDate, setPermitExpiryDate] = useState('');
@@ -25,6 +29,11 @@ const SellerRegister: React.FC = () => {
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+
+    if (!phone.trim()) {
+      setError('Phone number is required');
       return;
     }
 
@@ -45,6 +54,15 @@ const SellerRegister: React.FC = () => {
       formData.append('permit', permitFile);
       formData.append('permit_issue_date', permitIssueDate);
       formData.append('permit_expiry_date', permitExpiryDate);
+      if (latitude !== null) {
+        formData.append('latitude', latitude.toString());
+      }
+      if (longitude !== null) {
+        formData.append('longitude', longitude.toString());
+      }
+      if (fullAddress.trim()) {
+        formData.append('full_address', fullAddress.trim());
+      }
 
       await register(formData);
       navigate('/seller/verification');
@@ -119,7 +137,7 @@ const SellerRegister: React.FC = () => {
 
         <div>
           <label htmlFor="phone" className="mb-1.5 block text-sm font-semibold text-gray-700">
-            Phone
+            Phone Number
           </label>
           <input
             id="phone"
@@ -167,6 +185,21 @@ const SellerRegister: React.FC = () => {
             className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
             required
             minLength={6}
+          />
+        </div>
+
+        <div>
+          <LocationPicker
+            latitude={latitude}
+            longitude={longitude}
+            fullAddress={fullAddress}
+            onChange={({ latitude: lat, longitude: lng, fullAddress: addr }) => {
+              setLatitude(lat);
+              setLongitude(lng);
+              setFullAddress(addr);
+            }}
+            label="Shop Location (Map Pin)"
+            helperText="Search your location or click on the map to drop a pin for your poultry shop."
           />
         </div>
 

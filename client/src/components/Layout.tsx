@@ -66,18 +66,22 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAdmin = user?.role === 'admin';
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-50 print:bg-white text-slate-900">
       <div className="flex min-h-screen">
         <aside
-          className="w-72 border-r border-emerald-900/30 text-white px-5 py-6 shadow-sm flex flex-col justify-between"
+          className="w-72 border-r border-emerald-900/30 text-white px-5 py-6 shadow-sm flex flex-col justify-between h-screen sticky top-0 overflow-y-auto shrink-0 z-30 print:hidden"
           style={{ background: 'linear-gradient(180deg, #357938 0%, #47994A 41%, #5D8B48 68%, #727542 84%, #87623D 100%)' }}
         >
           <div>
             <div className="mb-10 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/20 text-white font-bold text-base tracking-wider">PL</div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white p-1 shadow-sm shrink-0 overflow-hidden">
+                <img src="/logo.png" alt="PoultryLink Logo" className="h-full w-full object-contain" />
+              </div>
               <div>
-                <p className="text-lg font-semibold text-white">Poultry Link</p>
-                <p className="text-sm text-emerald-100">Modern ag marketplace</p>
+                <p className="text-lg font-semibold text-white leading-tight">
+                  Poultry<span className="text-brand">Link</span>
+                </p>
+                <p className="text-xs text-emerald-100 font-medium">Modern ag marketplace</p>
               </div>
             </div>
 
@@ -197,8 +201,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
         </aside>
 
-        <div className="flex-1 px-6 py-6">
-          <header className="mb-6 flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex-1 px-6 py-6 print:p-0 print:m-0 print:w-full">
+          <header className="mb-6 flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between print:hidden">
             <div>
               <p className="text-sm text-slate-500">Hello,</p>
               <p className="text-xl font-semibold text-slate-900">{user?.fullname}</p>
@@ -210,14 +214,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 onChange={() => {}}
               />
               <SearchIcon className="h-4 w-4 text-slate-400" />
-            </div>
-            <div className="flex items-center gap-3 text-slate-600">
-              <span className="hidden rounded-full bg-brand/10 px-3 py-1 text-sm font-semibold text-brand sm:inline-flex">
-                {(user?.role === 'seller' || user?.role === 'reseller') ? (user?.role === 'seller' ? 'Seller' : 'Reseller') : user?.role}
-              </span>
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand/10 text-brand font-bold text-sm uppercase">
-                {user?.fullname ? user.fullname.charAt(0) : 'U'}
-              </div>
             </div>
           </header>
 
