@@ -9,13 +9,17 @@ import CustomerRoutes from './pages/customer/CustomerRoutes';
 import GoogleCallback from './pages/GoogleCallback';
 import GoogleRegisterComplete from './pages/GoogleRegisterComplete';
 import RiderLogin from './pages/rider/RiderLogin';
+import RiderRegister from './pages/rider/RiderRegister';
+import RiderGoogleRegisterComplete from './pages/rider/RiderGoogleRegisterComplete';
 import RiderDashboard from './pages/rider/RiderDashboard';
 import RiderOrderDetails from './pages/rider/RiderOrderDetails';
+import RiderApplicationEdit from './pages/rider/RiderApplicationEdit';
 import SellerRoutes from './pages/seller/SellerRoutes';
 import AdminDashboard from './pages/dashboards/AdminDashboard';
 import AdminUsers from './pages/AdminUsers';
 import AdminLogs from './pages/AdminLogs';
 import AdminPermits from './pages/AdminPermits';
+import AdminRiders from './pages/AdminRiders';
 import AdminMarket from './pages/AdminMarket';
 import AdminReports from './pages/AdminReports';
 import AdminSettings from './pages/AdminSettings';
@@ -31,7 +35,9 @@ const AppRouter: React.FC = () => {
     if (!user || !hasToken) return '/login';
     if (user.role === 'customer') return '/customer';
     if (user.role === 'admin') return '/admin/dashboard';
-    if (user.role === 'rider') return '/rider/dashboard';
+    if (user.role === 'rider') {
+      return (user.status === 'verified' || user.status === 'active') ? '/rider/dashboard' : '/rider/application';
+    }
     return '/seller/dashboard';
   };
 
@@ -47,12 +53,22 @@ const AppRouter: React.FC = () => {
         <Route path="/auth/callback" element={<GoogleCallback />} />
         <Route path="/register/google-complete" element={<GoogleRegisterComplete />} />
         <Route path="/rider/login" element={<RiderLogin />} />
+        <Route path="/rider/register" element={<RiderRegister />} />
+        <Route path="/rider/register/google-complete" element={<RiderGoogleRegisterComplete />} />
 
         <Route
           path="/rider/dashboard"
           element={
             <ProtectedRoute allowedRoles={['rider']}>
               <RiderDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/rider/application"
+          element={
+            <ProtectedRoute allowedRoles={['rider']}>
+              <RiderApplicationEdit />
             </ProtectedRoute>
           }
         />
@@ -123,6 +139,14 @@ const AppRouter: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <AdminPermits />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/riders"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminRiders />
             </ProtectedRoute>
           }
         />

@@ -22,6 +22,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ user, logout }) => {
     { path: '/admin/shares', label: 'Admin Shares (5%)' },
     { path: '/admin/users', label: 'User Management' },
     { path: '/admin/permits', label: 'Permits Verifications' },
+    { path: '/admin/riders', label: 'Rider Approvals' },
     { path: '/admin/market', label: 'Market Monitoring' },
     { path: '/admin/reports', label: 'Reports' },
     { path: '/admin/logs', label: 'Audit Logs' },

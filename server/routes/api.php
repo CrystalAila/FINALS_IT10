@@ -13,12 +13,16 @@ use App\Http\Controllers\Api\AdminShareController;
 use App\Http\Controllers\Api\SettingController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/', fn () => response()->json(['status' => 'ok', 'message' => 'PoultryLink API is running']));
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/rider/register', [AuthController::class, 'riderRegister']);
+Route::post('/rider/login', [AuthController::class, 'login']);
 Route::post('/auth/google', [AuthController::class, 'googleLogin']);
 Route::get('/auth/google/redirect', [AuthController::class, 'googleRedirect']);
 Route::get('/auth/google/callback', [AuthController::class, 'googleCallback'])->name('google.callback');
 Route::post('/auth/google/register', [AuthController::class, 'googleRegister']);
+Route::post('/auth/google/rider-register', [AuthController::class, 'googleRiderRegister']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
@@ -86,7 +90,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Rider Routes
     Route::middleware([\App\Http\Middleware\RoleMiddleware::class . ':rider'])->group(function () {
+        Route::get('/rider/application', [RiderController::class, 'getApplication']);
+        Route::post('/rider/application', [RiderController::class, 'updateApplication']);
         Route::get('/rider/orders', [RiderOrderController::class, 'index']);
+        Route::get('/rider/available-orders', [RiderOrderController::class, 'availableOrders']);
+        Route::post('/rider/orders/{id}/claim', [RiderOrderController::class, 'claimOrder']);
         Route::get('/rider/orders/{id}', [RiderOrderController::class, 'show']);
         Route::put('/rider/orders/{id}/status', [RiderOrderController::class, 'updateStatus']);
     });
@@ -113,6 +121,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/admin/permits/{id}/request-revision', [UserController::class, 'requestRevisionPermit']);
         Route::put('/admin/permits/{id}/suspend', [UserController::class, 'suspendSeller']);
         Route::put('/admin/permits/{id}/under-review', [UserController::class, 'underReviewPermit']);
+        Route::put('/admin/permits/{id}/dates', [UserController::class, 'updatePermitDates']);
+
+        // Rider Application Approval Routes
+        Route::get('/admin/rider-applications', [UserController::class, 'getRiderApplications']);
+        Route::put('/admin/rider-applications/{id}/approve', [UserController::class, 'approveRiderApplication']);
+        Route::put('/admin/rider-applications/{id}/reject', [UserController::class, 'rejectRiderApplication']);
 
         // Admin Shares (5% Platform Fee)
         Route::get('/admin/shares', [AdminShareController::class, 'index']);

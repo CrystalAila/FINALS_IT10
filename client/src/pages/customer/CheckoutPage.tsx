@@ -2,14 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api from '../../lib/axios';
-import Modal from '../../components/customer/Modal';
+import FoodpandaAddressModal from '../../components/customer/FoodpandaAddressModal';
 import { useCart } from '../../context/CartContext';
 import { useToast } from '../../context/ToastContext';
+import { useCustomerLocation } from '../../context/CustomerLocationContext';
 import type { CartItem, DeliveryAddress, DeliveryType, PaymentMethod, SavedAddress } from '../../types/marketplace';
 import { formatPrice, formatQuantityWithUnit, formatUnitSuffix } from '../../types/marketplace';
+import { MapPin, Building, FileText, CheckCircle2 } from 'lucide-react';
 
 export default function CheckoutPage() {
   const { toast } = useToast();
+  const { location: customerLocation } = useCustomerLocation();
   const { items: cartItems, savedAddress, saveAddress, removeItems } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
@@ -86,9 +89,9 @@ export default function CheckoutPage() {
   };
 
   const farmLocation = items.length > 0 ? (items[0].farmLocation || 'Roxas City, Capiz') : 'Roxas City, Capiz';
-  const customerLocation = savedAddress ? `${savedAddress.streetAddress} ${savedAddress.region}` : ' ';
+  const customerAddressStr = savedAddress ? `${savedAddress.streetAddress} ${savedAddress.region}` : ' ';
   
-  const distanceKm = deliveryType === 'delivery' && savedAddress ? calculateDistanceMock(farmLocation, customerLocation) : 0;
+  const distanceKm = deliveryType === 'delivery' && savedAddress ? calculateDistanceMock(farmLocation, customerAddressStr) : 0;
   
   const shippingFee = deliveryType === 'delivery' && distanceKm > 0
     ? (distanceKm <= 2 ? 45 : 45 + ((distanceKm - 2) * 6))
@@ -106,9 +109,11 @@ export default function CheckoutPage() {
     },
   );
 
+  const [editingAddressForModal, setEditingAddressForModal] = useState<SavedAddress | null>(null);
+
   useEffect(() => {
     api.get('/addresses').then((res) => {
-      const list: SavedAddress[] = res.data.addresses;
+      const list: SavedAddress[] = res.data.addresses ?? [];
       setSavedAddresses(list);
       const defaultAddr = list.find((a) => a.is_default) ?? list[0];
       if (defaultAddr && !savedAddress) {
@@ -118,6 +123,10 @@ export default function CheckoutPage() {
           region: defaultAddr.region,
           postalCode: defaultAddr.postal_code,
           streetAddress: defaultAddr.street_address,
+          floorUnit: defaultAddr.floor_unit,
+          deliveryNotes: defaultAddr.delivery_notes,
+          latitude: defaultAddr.latitude,
+          longitude: defaultAddr.longitude,
         });
       }
     }).catch(() => {
@@ -143,7 +152,11 @@ export default function CheckoutPage() {
 
   const handleSaveAddress = (e: FormEvent) => {
     e.preventDefault();
-    saveAddress(addressForm);
+    saveAddress({
+      ...addressForm,
+      latitude: customerLocation?.latitude ?? null,
+      longitude: customerLocation?.longitude ?? null,
+    } as any);
     setAddressModalOpen(false);
   };
 
@@ -155,6 +168,11 @@ export default function CheckoutPage() {
       setAddressModalOpen(true);
       return;
     }
+
+    const noteParts: string[] = [];
+    if (savedAddress?.fullName) noteParts.push(`Recipient: ${savedAddress.fullName}`);
+    if (savedAddress?.floorUnit) noteParts.push(`Unit/Floor: ${savedAddress.floorUnit}`);
+    if (savedAddress?.deliveryNotes) noteParts.push(`Note for rider: ${savedAddress.deliveryNotes}`);
 
     setPlacing(true);
     try {
@@ -170,8 +188,10 @@ export default function CheckoutPage() {
         city: savedAddress?.region,
         province: savedAddress?.region,
         postal_code: savedAddress?.postalCode,
+        latitude: savedAddress?.latitude ?? customerLocation?.latitude ?? null,
+        longitude: savedAddress?.longitude ?? customerLocation?.longitude ?? null,
         phone: savedAddress?.phone,
-        notes: savedAddress ? `Recipient: ${savedAddress.fullName}` : undefined,
+        notes: noteParts.length > 0 ? noteParts.join(' | ') : undefined,
       });
 
       // If ordered from cart, remove only the ordered items from the cart
@@ -294,30 +314,57 @@ export default function CheckoutPage() {
             <h2 className="font-semibold text-gray-900">Delivery Address</h2>
             <button
               type="button"
-              onClick={() => setAddressModalOpen(true)}
-              className="text-sm font-semibold text-brand hover:underline"
+              onClick={() => {
+                const found = savedAddresses.find((a) => a.street_address === savedAddress?.streetAddress);
+                setEditingAddressForModal(found || null);
+                setAddressModalOpen(true);
+              }}
+              className="text-sm font-bold text-brand hover:underline cursor-pointer"
             >
-              {savedAddress ? 'Edit Address' : '+ New Address'}
+              {savedAddress ? 'Edit Address & Pin' : '+ New Address & Pin'}
             </button>
           </div>
           {savedAddress ? (
-            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 space-y-2">
               <div className="text-sm">
-                <p className="font-semibold text-gray-900">{savedAddress.fullName}</p>
-                <p className="text-gray-600">{savedAddress.phone}</p>
-                <p className="text-gray-600">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-gray-900">{savedAddress.fullName}</span>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-gray-600 font-mono text-xs">{savedAddress.phone}</span>
+                </div>
+                <p className="text-gray-700 mt-1">
                   {savedAddress.streetAddress}, {savedAddress.region} {savedAddress.postalCode}
                 </p>
+                {savedAddress.floorUnit && (
+                  <p className="text-xs text-gray-600 flex items-center gap-1.5 mt-1">
+                    <Building className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                    <span>Unit/Landmark: {savedAddress.floorUnit}</span>
+                  </p>
+                )}
+                {savedAddress.deliveryNotes && (
+                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200/60 px-2.5 py-1 rounded-lg flex items-center gap-1.5 mt-1.5 w-fit">
+                    <FileText className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                    <span>Note for rider: {savedAddress.deliveryNotes}</span>
+                  </p>
+                )}
+                {(savedAddress?.latitude || customerLocation?.latitude) && (
+                  <div className="mt-2.5 inline-flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-100/70 border border-emerald-200 px-3 py-1 rounded-xl font-medium">
+                    <MapPin className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>
+                      Rider will deliver to pinned coordinates ({Number(savedAddress?.latitude ?? customerLocation?.latitude).toFixed(4)}, {Number(savedAddress?.longitude ?? customerLocation?.longitude).toFixed(4)})
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-500">No address saved yet. Click "New Address" to add one.</p>
+            <p className="text-sm text-gray-500">No address saved yet. Click "New Address & Pin" to set delivery location.</p>
           )}
           {savedAddresses.length > 0 && (
             <div className="mt-3">
               <label className="mb-1 block text-xs font-medium text-gray-500">Or choose from address book</label>
               <select
-                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-brand"
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-brand bg-white"
                 value=""
                 onChange={(e) => {
                   const addr = savedAddresses.find((a) => String(a.id) === e.target.value);
@@ -328,6 +375,10 @@ export default function CheckoutPage() {
                       region: addr.region,
                       postalCode: addr.postal_code,
                       streetAddress: addr.street_address,
+                      floorUnit: addr.floor_unit,
+                      deliveryNotes: addr.delivery_notes,
+                      latitude: addr.latitude,
+                      longitude: addr.longitude,
                     });
                   }
                 }}
@@ -405,65 +456,31 @@ export default function CheckoutPage() {
         </button>
       </section>
 
-      {/* New Address Modal */}
-      <Modal open={addressModalOpen} onClose={() => setAddressModalOpen(false)} title="New Address">
-        <form onSubmit={handleSaveAddress} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Full Name</label>
-            <input
-              required
-              value={addressForm.fullName}
-              onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Phone Number</label>
-            <input
-              required
-              type="tel"
-              value={addressForm.phone}
-              onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Region</label>
-            <input
-              required
-              value={addressForm.region}
-              onChange={(e) => setAddressForm({ ...addressForm, region: e.target.value })}
-              placeholder="e.g. Capiz, Western Visayas"
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Postal Code</label>
-            <input
-              required
-              value={addressForm.postalCode}
-              onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Street Address</label>
-            <textarea
-              required
-              rows={2}
-              value={addressForm.streetAddress}
-              onChange={(e) => setAddressForm({ ...addressForm, streetAddress: e.target.value })}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-          >
-            Save Address
-          </button>
-        </form>
-      </Modal>
+      {/* Foodpanda Style Address Modal */}
+      <FoodpandaAddressModal
+        open={addressModalOpen}
+        onClose={() => setAddressModalOpen(false)}
+        editingAddress={editingAddressForModal}
+        defaultFullName={savedAddress?.fullName || ''}
+        onSuccess={(saved) => {
+          saveAddress({
+            fullName: saved.full_name,
+            phone: saved.phone,
+            region: saved.region,
+            postalCode: saved.postal_code,
+            streetAddress: saved.street_address,
+            floorUnit: saved.floor_unit,
+            deliveryNotes: saved.delivery_notes,
+            latitude: saved.latitude,
+            longitude: saved.longitude,
+          });
+          setSavedAddresses((prev) => {
+            const exists = prev.some((a) => a.id === saved.id);
+            if (exists) return prev.map((a) => (a.id === saved.id ? saved : a));
+            return [saved, ...prev];
+          });
+        }}
+      />
     </div>
   );
 }

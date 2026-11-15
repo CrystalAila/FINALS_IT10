@@ -11,6 +11,7 @@ class Order extends Model
     protected $fillable = [
         'customer_id', 'farm_id', 'status', 'delivery_type', 'payment_method',
         'total', 'shipping_fee', 'address_line', 'city', 'province', 'postal_code',
+        'latitude', 'longitude',
         'phone', 'rider_name', 'rider_id', 'notes', 'cancel_reason',
     ];
 

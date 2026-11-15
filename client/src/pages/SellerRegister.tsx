@@ -1,9 +1,11 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useMemo, useEffect, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AuthLayout from '../components/customer/AuthLayout';
 import GoogleLoginButton from '../components/customer/GoogleLoginButton';
 import LocationPicker from '../components/common/LocationPicker';
+import { PermitDocumentViewer } from '../components/common/PermitDocumentViewer';
+import { Eye, Calendar, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 
 const SellerRegister: React.FC = () => {
   const [fullname, setFullname] = useState('');
@@ -16,12 +18,53 @@ const SellerRegister: React.FC = () => {
   const [longitude, setLongitude] = useState<number | null>(null);
   const [fullAddress, setFullAddress] = useState('');
   const [permitFile, setPermitFile] = useState<File | null>(null);
+  const [permitPreviewUrl, setPermitPreviewUrl] = useState<string | null>(null);
+  const [showPermitModal, setShowPermitModal] = useState(false);
   const [permitIssueDate, setPermitIssueDate] = useState('');
   const [permitExpiryDate, setPermitExpiryDate] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { register, loading } = useAuth();
   const navigate = useNavigate();
+
+  // Create preview URL when file changes
+  useEffect(() => {
+    if (!permitFile) {
+      setPermitPreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(permitFile);
+    setPermitPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [permitFile]);
+
+  // Handle setting expiry date to 1 year from issue date
+  const handleAutoSetExpiry = (issueDateStr: string) => {
+    if (!issueDateStr) return;
+    const d = new Date(issueDateStr);
+    if (!isNaN(d.getTime())) {
+      d.setFullYear(d.getFullYear() + 1);
+      setPermitExpiryDate(d.toISOString().split('T')[0]);
+    }
+  };
+
+  // Expiry check
+  const expiryAnalysis = useMemo(() => {
+    if (!permitExpiryDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const exp = new Date(permitExpiryDate);
+    exp.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return { status: 'expired', message: `Permit expired ${Math.abs(diffDays)} day(s) ago`, color: 'text-red-600 bg-red-50 border-red-200' };
+    }
+    if (diffDays <= 30) {
+      return { status: 'warning', message: `Permit expires soon (${diffDays} days left)`, color: 'text-amber-700 bg-amber-50 border-amber-200' };
+    }
+    return { status: 'valid', message: `Permit is valid (${diffDays} days remaining)`, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+  }, [permitExpiryDate]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -65,7 +108,7 @@ const SellerRegister: React.FC = () => {
       }
 
       await register(formData);
-      navigate('/seller/verification');
+      navigate('/account-status');
     } catch (err: any) {
       const errorData = err?.response?.data;
       if (errorData?.errors) {
@@ -203,10 +246,23 @@ const SellerRegister: React.FC = () => {
           />
         </div>
 
-        <div>
-          <label htmlFor="permit" className="mb-1.5 block text-sm font-semibold text-gray-700">
-            Business Permit (Image or PDF)
-          </label>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <label htmlFor="permit" className="block text-sm font-semibold text-gray-700">
+              Business Permit (Image or PDF)
+            </label>
+            {permitFile && permitPreviewUrl && (
+              <button
+                type="button"
+                onClick={() => setShowPermitModal(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:underline cursor-pointer"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                Inspect / Preview Document
+              </button>
+            )}
+          </div>
+
           <input
             id="permit"
             type="file"
@@ -219,35 +275,78 @@ const SellerRegister: React.FC = () => {
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 file:mr-4 file:rounded-full file:border-0 file:bg-brand/10 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-brand hover:file:bg-brand/20"
             required
           />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="permitIssueDate" className="block text-sm font-semibold text-gray-700">
+                  Date Issued
+                </label>
+                {permitIssueDate && (
+                  <button
+                    type="button"
+                    onClick={() => handleAutoSetExpiry(permitIssueDate)}
+                    className="text-[11px] font-semibold text-brand hover:underline cursor-pointer"
+                    title="Calculate expiry as 1 year from issue date"
+                  >
+                    +1 Year Validity
+                  </button>
+                )}
+              </div>
+              <input
+                id="permitIssueDate"
+                type="date"
+                value={permitIssueDate}
+                onChange={(e) => {
+                  setPermitIssueDate(e.target.value);
+                  if (!permitExpiryDate) {
+                    handleAutoSetExpiry(e.target.value);
+                  }
+                }}
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 text-sm"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="permitExpiryDate" className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Date of Expiration
+              </label>
+              <input
+                id="permitExpiryDate"
+                type="date"
+                value={permitExpiryDate}
+                onChange={(e) => setPermitExpiryDate(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 text-sm"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Expiry Warning Alert */}
+          {expiryAnalysis && (
+            <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ${expiryAnalysis.color}`}>
+              {expiryAnalysis.status === 'expired' && <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />}
+              {expiryAnalysis.status === 'warning' && <Clock className="h-4 w-4 shrink-0 text-amber-600" />}
+              {expiryAnalysis.status === 'valid' && <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600" />}
+              <span>{expiryAnalysis.message}</span>
+            </div>
+          )}
         </div>
 
-        <div>
-          <label htmlFor="permitIssueDate" className="mb-1.5 block text-sm font-semibold text-gray-700">
-            Date Issued
-          </label>
-          <input
-            id="permitIssueDate"
-            type="date"
-            value={permitIssueDate}
-            onChange={(e) => setPermitIssueDate(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-            required
+        {/* Modal viewer for permit file */}
+        {showPermitModal && permitPreviewUrl && (
+          <PermitDocumentViewer
+            open={showPermitModal}
+            onClose={() => setShowPermitModal(false)}
+            documentUrl={permitPreviewUrl}
+            title={businessName ? `${businessName} - Business Permit` : 'Business Permit Preview'}
+            subtitle={permitFile?.name}
+            permitIssueDate={permitIssueDate}
+            permitExpiryDate={permitExpiryDate}
+            allowDateEditing={false}
           />
-        </div>
-
-        <div>
-          <label htmlFor="permitExpiryDate" className="mb-1.5 block text-sm font-semibold text-gray-700">
-            Date of Expiration
-          </label>
-          <input
-            id="permitExpiryDate"
-            type="date"
-            value={permitExpiryDate}
-            onChange={(e) => setPermitExpiryDate(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-            required
-          />
-        </div>
+        )}
 
         <button
           type="submit"

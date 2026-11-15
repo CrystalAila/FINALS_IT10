@@ -3,6 +3,7 @@ import AdminLayout from '../layouts/AdminLayout';
 import api from '../lib/axios';
 import { useToast } from '../context/ToastContext';
 import SearchIcon from '../components/common/SearchIcon';
+import PermitDocumentViewer from '../components/common/PermitDocumentViewer';
 
 interface PermitRequest {
   id: number;
@@ -91,6 +92,30 @@ const AdminPermits: React.FC = () => {
       fetchPermits();
     } catch (error: any) {
       toast.error('Failed to set permit under review.');
+    }
+  };
+
+  const handleSavePermitDates = async (issueDate: string, expiryDate: string) => {
+    if (!selectedPermit) return;
+    try {
+      await api.put(`/admin/permits/${selectedPermit.id}/dates`, {
+        permit_issue_date: issueDate || null,
+        permit_expiry_date: expiryDate || null,
+      });
+      toast.success('Permit dates updated successfully.');
+      setSelectedPermit((prev) =>
+        prev
+          ? {
+              ...prev,
+              permit_issue_date: issueDate || null,
+              permit_expiry_date: expiryDate || null,
+            }
+          : null
+      );
+      fetchPermits();
+    } catch {
+      toast.error('Failed to update permit dates.');
+      throw new Error('Failed to update permit dates');
     }
   };
 
@@ -402,178 +427,116 @@ const AdminPermits: React.FC = () => {
         </div>
       </div>
 
-      {/* Document Preview Modal */}
-      {showDocumentPreview && selectedPermit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="relative w-full max-w-4xl rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Verification Document</span>
-                <h3 className="text-xl font-bold text-slate-900">{selectedPermit.seller_name}</h3>
-                {selectedPermit.permit_issue_date && (
-                  <span className="text-xs text-slate-500 block mt-1">
-                    <strong>Issued:</strong> {new Date(selectedPermit.permit_issue_date).toLocaleDateString()}
-                    {selectedPermit.permit_expiry_date && (
-                      <> | <strong>Expires:</strong> {new Date(selectedPermit.permit_expiry_date).toLocaleDateString()}</>
-                    )}
-                    {selectedPermit.permit_expiry_date && (
-                      new Date(selectedPermit.permit_expiry_date) < new Date() ? (
-                        <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[10px] text-red-700 font-bold animate-pulse inline-block">EXPIRED</span>
-                      ) : (() => {
-                        const days = Math.ceil((new Date(selectedPermit.permit_expiry_date).getTime() - new Date().setHours(0, 0, 0, 0)) / (1000 * 3600 * 24));
-                        if (days > 0 && days <= 30) {
-                          return (
-                            <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] text-orange-700 font-bold animate-pulse inline-block">EXPIRING SOON ({days}d left)</span>
-                          );
-                        }
-                        return null;
-                      })()
-                    )}
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={() => {
-                  setShowDocumentPreview(false);
-                  setSelectedPermit(null);
-                }}
-                className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 transition"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Body / Document Preview */}
-            <div className="flex-1 overflow-y-auto py-6 flex flex-col items-center justify-center min-h-[400px]">
-              {selectedPermit.permit_url ? (
-                selectedPermit.permit_url.toLowerCase().endsWith('.pdf') ? (
-                  <iframe
-                    src={selectedPermit.permit_url}
-                    className="w-full h-[500px] rounded-2xl border border-slate-200"
-                    title="Business Permit PDF"
-                  />
-                ) : (
-                  <img
-                    src={selectedPermit.permit_url}
-                    alt="Business Permit"
-                    className="max-h-[500px] max-w-full rounded-2xl object-contain border border-slate-100 shadow-md"
-                  />
-                )
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-lg text-slate-500 font-semibold">No document preview available</p>
-                  <p className="text-sm text-slate-400 mt-1">Check uploaded document file name: {selectedPermit.documents[0]}</p>
-                </div>
+      {/* Interactive Permit Document Viewer with Zoom, Pan, Date Management, and Expiry Warning */}
+      {selectedPermit && (
+        <PermitDocumentViewer
+          open={showDocumentPreview}
+          onClose={() => {
+            setShowDocumentPreview(false);
+            setSelectedPermit(null);
+          }}
+          documentUrl={selectedPermit.permit_url || null}
+          title={selectedPermit.seller_name}
+          subtitle={`Verification Status: ${selectedPermit.status} • Submitted ${selectedPermit.submitted_at}`}
+          permitIssueDate={selectedPermit.permit_issue_date}
+          permitExpiryDate={selectedPermit.permit_expiry_date}
+          allowDateEditing={true}
+          onSaveDates={handleSavePermitDates}
+          extraActions={
+            <>
+              {selectedPermit.status === 'Pending' && (
+                <>
+                  <button
+                    onClick={() => {
+                      handleUnderReview(selectedPermit.id);
+                      setShowDocumentPreview(false);
+                    }}
+                    className="rounded-xl bg-slate-700 hover:bg-slate-800 px-4 py-2 text-xs font-semibold text-white shadow-sm transition"
+                  >
+                    Set Under Review
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleApprove(selectedPermit.id);
+                      setShowDocumentPreview(false);
+                    }}
+                    className="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-xs font-semibold text-white shadow-sm transition"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleReject(selectedPermit.id);
+                      setShowDocumentPreview(false);
+                    }}
+                    className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                  >
+                    Reject
+                  </button>
+                </>
               )}
-            </div>
 
-            {/* Modal Footer / Actions */}
-            <div className="pt-4 border-t border-slate-100 flex flex-wrap gap-2 justify-between items-center">
-              <div className="flex gap-2">
-                {selectedPermit.status === 'Pending' && (
-                  <>
+              {selectedPermit.status === 'Under Review' && (
+                <>
+                  <button
+                    onClick={() => {
+                      handleApprove(selectedPermit.id);
+                      setShowDocumentPreview(false);
+                    }}
+                    className="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-xs font-semibold text-white shadow-sm transition"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleRequestRevision(selectedPermit.id);
+                      setShowDocumentPreview(false);
+                    }}
+                    className="rounded-xl bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-semibold text-white shadow-sm transition"
+                  >
+                    Request Revision
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleReject(selectedPermit.id);
+                      setShowDocumentPreview(false);
+                    }}
+                    className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                  >
+                    Reject
+                  </button>
+                </>
+              )}
+
+              {(selectedPermit.status === 'Approved' || selectedPermit.status === 'Rejected' || selectedPermit.status === 'Suspended') && (
+                <>
+                  {selectedPermit.status !== 'Suspended' && (
+                    <button
+                      onClick={() => {
+                        handleSuspend(selectedPermit.id);
+                        setShowDocumentPreview(false);
+                      }}
+                      className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                    >
+                      Suspend Account
+                    </button>
+                  )}
+                  {selectedPermit.status === 'Suspended' && (
                     <button
                       onClick={() => {
                         handleUnderReview(selectedPermit.id);
                         setShowDocumentPreview(false);
                       }}
-                      className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150"
+                      className="rounded-xl bg-slate-700 hover:bg-slate-800 px-4 py-2 text-xs font-semibold text-white shadow-sm transition"
                     >
                       Set Under Review
                     </button>
-                    <button
-                      onClick={() => {
-                        handleApprove(selectedPermit.id);
-                        setShowDocumentPreview(false);
-                      }}
-                      className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleReject(selectedPermit.id);
-                        setShowDocumentPreview(false);
-                      }}
-                      className="rounded-2xl border border-red-300 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100"
-                    >
-                      Reject
-                    </button>
-                  </>
-                )}
-
-                {selectedPermit.status === 'Under Review' && (
-                  <>
-                    <button
-                      onClick={() => {
-                        handleApprove(selectedPermit.id);
-                        setShowDocumentPreview(false);
-                      }}
-                      className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] py-3 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleRequestRevision(selectedPermit.id);
-                        setShowDocumentPreview(false);
-                      }}
-                      className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150"
-                    >
-                      Request Revision
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleReject(selectedPermit.id);
-                        setShowDocumentPreview(false);
-                      }}
-                      className="rounded-2xl border border-red-300 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100"
-                    >
-                      Reject
-                    </button>
-                  </>
-                )}
-
-                {(selectedPermit.status === 'Approved' || selectedPermit.status === 'Rejected' || selectedPermit.status === 'Suspended') && (
-                  <>
-                    {selectedPermit.status !== 'Suspended' && (
-                      <button
-                        onClick={() => {
-                          handleSuspend(selectedPermit.id);
-                          setShowDocumentPreview(false);
-                        }}
-                        className="rounded-2xl border border-slate-300 bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-                      >
-                        Suspend Account
-                      </button>
-                    )}
-                    {selectedPermit.status === 'Suspended' && (
-                      <button
-                        onClick={() => {
-                          handleUnderReview(selectedPermit.id);
-                          setShowDocumentPreview(false);
-                        }}
-                        className="rounded-xl bg-[#D96B27] hover:bg-[#C55A1A] active:bg-[#B34F14] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150"
-                      >
-                        Set Under Review
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-              <button
-                onClick={() => {
-                  setShowDocumentPreview(false);
-                  setSelectedPermit(null);
-                }}
-                className="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+                  )}
+                </>
+              )}
+            </>
+          }
+        />
       )}
     </AdminLayout>
   );

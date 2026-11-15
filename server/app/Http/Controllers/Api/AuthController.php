@@ -19,6 +19,10 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
+        if ($request->input('role') === 'rider') {
+            return $this->riderRegister($request);
+        }
+
         if ($request->input('role') === 'seller') {
             if (!$request->filled('username') && $request->filled('business_name')) {
                 // Generate username from business_name
@@ -125,6 +129,91 @@ class AuthController extends Controller
         return response()->json(['user' => $user, 'token' => $token]);
     }
 
+    public function riderRegister(Request $request)
+    {
+        // Support alternative field names for files if uploaded
+        if (!$request->hasFile('photo') && $request->hasFile('photo_2x2')) {
+            $request->files->set('photo', $request->file('photo_2x2'));
+        }
+        if (!$request->hasFile('license') && $request->hasFile('license_photo')) {
+            $request->files->set('license', $request->file('license_photo'));
+        }
+
+        $rules = [
+            'fullname' => ['required', 'string', 'max:255', 'regex:/^[\pL\s\.\'\-]+$/u'],
+            'username' => ['nullable', 'string', 'max:255', 'alpha_dash', 'unique:users,username'],
+            'phone' => ['required', 'string', 'max:30'],
+            'address' => ['required', 'string', 'max:500'],
+            'password' => ['required', 'string', 'min:6', 'max:72'],
+            'photo' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'license' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'vehicle_type' => ['nullable', 'string', 'max:100'],
+            'plate_number' => ['nullable', 'string', 'max:50'],
+        ];
+
+        if (!$request->filled('username')) {
+            $baseUsername = Str::slug($request->input('fullname'), '');
+            $baseUsername = preg_replace('/[^A-Za-z0-9]/', '', $baseUsername);
+            if (empty($baseUsername)) {
+                $baseUsername = 'rider_' . Str::random(6);
+            }
+            $username = substr($baseUsername, 0, 15);
+            $suffix = 1;
+            while (User::where('username', $username)->exists()) {
+                $username = substr($baseUsername, 0, 12) . $suffix;
+                $suffix++;
+            }
+            $request->merge(['username' => $username]);
+        }
+
+        $validator = Validator::make($request->all(), $rules);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
+
+        $photoPath = null;
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('riders', 'public');
+        }
+
+        $licensePath = null;
+        if ($request->hasFile('license')) {
+            $licensePath = $request->file('license')->store('rider_licenses', 'public');
+        }
+
+        $user = User::create([
+            'fullname' => $data['fullname'],
+            'username' => $data['username'],
+            'phone' => $data['phone'],
+            'password' => Hash::make($data['password']),
+            'role' => 'rider',
+            'status' => 'pending',
+        ]);
+
+        $rider = \App\Models\Rider::create([
+            'user_id' => $user->id,
+            'fullname' => $data['fullname'],
+            'phone' => $data['phone'],
+            'address' => $data['address'],
+            'photo_path' => $photoPath,
+            'license_photo_path' => $licensePath,
+            'vehicle_type' => $data['vehicle_type'] ?? null,
+            'plate_number' => $data['plate_number'] ?? null,
+            'status' => 'pending',
+        ]);
+
+        ActivityLogService::log("Rider application submitted: {$user->fullname} ({$user->username})", $user->id);
+
+        return response()->json([
+            'message' => 'Rider registration submitted successfully! Your account is currently pending administrator approval before you can access the rider portal.',
+            'user' => $user,
+            'rider' => $rider,
+        ], 201);
+    }
+
     public function login(Request $request)
     {
         $rules = [
@@ -159,6 +248,13 @@ class AuthController extends Controller
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
+        // Account status checks (only suspended accounts are completely blocked from logging in)
+        if ($user->status === 'suspended') {
+            return response()->json([
+                'message' => 'Your account has been suspended by an administrator. Please contact support.',
+            ], 403);
+        }
+
         if ($request->filled('phone')) {
             $phoneInput = trim($request->input('phone'));
             if (empty($user->phone)) {
@@ -179,6 +275,8 @@ class AuthController extends Controller
 
         if (in_array($user->role, ['seller', 'reseller'])) {
             $user->load('farm');
+        } elseif ($user->role === 'rider') {
+            $user->load('rider');
         }
 
         return response()->json(['user' => $user, 'token' => $token]);
@@ -256,6 +354,7 @@ class AuthController extends Controller
                 'email' => $email,
                 'google_id' => $googleId,
                 'role' => 'customer',
+                'status' => 'active',
                 'password' => null,
             ]);
         }
@@ -294,6 +393,8 @@ class AuthController extends Controller
 
     public function googleCallback(Request $request)
     {
+        $frontendUrl = rtrim(env('FRONTEND_URL') ?: config('app.frontend_url', 'http://localhost:5173'), '/');
+
         $stateData = [];
         if ($request->has('state')) {
             $stateData = json_decode(base64_decode($request->input('state')), true) ?? [];
@@ -314,12 +415,12 @@ class AuthController extends Controller
             try {
                 $googleUser = Socialite::driver('google')->stateless()->user();
             } catch (\Exception $e) {
-                return redirect()->away("http://localhost:5173/login?error=" . urlencode('Google authentication failed: ' . $e->getMessage()));
+                return redirect()->away($frontendUrl . '/login?error=' . urlencode('Google authentication failed: ' . $e->getMessage()));
             }
         }
 
         if (!$googleUser || !$googleUser->getId()) {
-            return redirect()->away("http://localhost:5173/login?error=" . urlencode('Unable to retrieve Google user.'));
+            return redirect()->away($frontendUrl . '/login?error=' . urlencode('Unable to retrieve Google user.'));
         }
 
         $googleId = $googleUser->getId();
@@ -336,8 +437,32 @@ class AuthController extends Controller
         }
 
         if (!$user) {
-            $frontendRegisterUrl = 'http://localhost:5173/register/google-complete';
-            return redirect()->away($frontendRegisterUrl . '?google_id=' . urlencode($googleId) . '&email=' . urlencode($email ?? '') . '&fullname=' . urlencode($fullname) . '&role=' . urlencode($role));
+            if ($role === 'rider') {
+                return redirect()->away($frontendUrl . '/rider/register/google-complete?google_id=' . urlencode($googleId) . '&email=' . urlencode($email ?? '') . '&fullname=' . urlencode($fullname));
+            }
+            if ($role === 'seller') {
+                return redirect()->away($frontendUrl . '/register/google-complete?google_id=' . urlencode($googleId) . '&email=' . urlencode($email ?? '') . '&fullname=' . urlencode($fullname) . '&role=seller');
+            }
+
+            // For customer / general login: automatically create customer account
+            $baseUsername = 'g' . substr(preg_replace('/[^a-z0-9]/', '', strtolower($googleId)), 0, 12);
+            $username = $baseUsername;
+            $suffix = 1;
+
+            while (User::where('username', $username)->exists()) {
+                $username = $baseUsername . $suffix;
+                $suffix++;
+            }
+
+            $user = User::create([
+                'fullname' => $fullname,
+                'username' => $username,
+                'email' => $email,
+                'google_id' => $googleId,
+                'role' => 'customer',
+                'status' => 'active',
+                'password' => null,
+            ]);
         }
 
         $token = $user->createToken('api-token')->plainTextToken;
@@ -346,10 +471,11 @@ class AuthController extends Controller
 
         if (in_array($user->role, ['seller', 'reseller'])) {
             $user->load('farm');
+        } elseif ($user->role === 'rider') {
+            $user->load('rider');
         }
 
-        $frontendUrl = 'http://localhost:5173/auth/callback';
-        return redirect()->away($frontendUrl . '?token=' . $token . '&user=' . urlencode(json_encode($user)));
+        return redirect()->away($frontendUrl . '/auth/callback?token=' . $token . '&user=' . urlencode(json_encode($user)));
     }
 
     public function googleRegister(Request $request)
@@ -444,6 +570,101 @@ class AuthController extends Controller
         }
 
         return response()->json(['user' => $user, 'token' => $token]);
+    }
+
+    public function googleRiderRegister(Request $request)
+    {
+        // Support alternative field names for file uploads
+        if (!$request->hasFile('photo') && $request->hasFile('photo_2x2')) {
+            $request->files->set('photo', $request->file('photo_2x2'));
+        }
+        if (!$request->hasFile('license') && $request->hasFile('license_photo')) {
+            $request->files->set('license', $request->file('license_photo'));
+        }
+
+        // Early uniqueness checks before heavy validation
+        if (User::where('google_id', $request->input('google_id'))->exists()) {
+            return response()->json(['message' => 'This Google account is already registered. Please sign in instead.'], 422);
+        }
+        if ($request->filled('email') && User::where('email', $request->input('email'))->exists()) {
+            return response()->json(['message' => 'This email address is already registered to another account.'], 422);
+        }
+
+        $rules = [
+            'google_id'    => ['required', 'string'],
+            'fullname'     => ['required', 'string', 'max:255', 'regex:/^[\pL\s\.\'\-]+$/u'],
+            'email'        => ['nullable', 'email', 'max:255'],
+            'phone'        => ['required', 'string', 'max:30'],
+            'address'      => ['required', 'string', 'max:500'],
+            'photo'        => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'license'      => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'vehicle_type' => ['nullable', 'string', 'max:100'],
+            'plate_number' => ['nullable', 'string', 'max:50'],
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
+
+        // Auto-generate a username from the rider's full name
+        $baseUsername = preg_replace('/[^A-Za-z0-9]/', '', strtolower($data['fullname']));
+        if (empty($baseUsername)) {
+            $baseUsername = 'rider_' . Str::random(6);
+        }
+        $username = substr($baseUsername, 0, 15);
+        $suffix = 1;
+        while (User::where('username', $username)->exists()) {
+            $username = substr($baseUsername, 0, 12) . $suffix;
+            $suffix++;
+        }
+
+        $photoPath = $request->hasFile('photo')
+            ? $request->file('photo')->store('riders', 'public')
+            : null;
+
+        $licensePath = $request->hasFile('license')
+            ? $request->file('license')->store('rider_licenses', 'public')
+            : null;
+
+        $user = User::create([
+            'fullname'  => $data['fullname'],
+            'username'  => $username,
+            'email'     => $data['email'] ?? null,
+            'google_id' => $data['google_id'],
+            'phone'     => $data['phone'],
+            'password'  => null,
+            'role'      => 'rider',
+            'status'    => 'pending',
+        ]);
+
+        $rider = \App\Models\Rider::create([
+            'user_id'            => $user->id,
+            'fullname'           => $data['fullname'],
+            'phone'              => $data['phone'],
+            'address'            => $data['address'],
+            'photo_path'         => $photoPath,
+            'license_photo_path' => $licensePath,
+            'vehicle_type'       => $data['vehicle_type'] ?? null,
+            'plate_number'       => $data['plate_number'] ?? null,
+            'status'             => 'pending',
+        ]);
+
+        $token = $user->createToken('api-token')->plainTextToken;
+
+        ActivityLogService::log(
+            "Rider application submitted via Google: {$user->fullname} ({$user->username})",
+            $user->id
+        );
+
+        return response()->json([
+            'message' => 'Rider application submitted via Google! Your account is pending administrator approval.',
+            'user'    => $user->load('rider'),
+            'token'   => $token,
+        ], 201);
     }
 
     public function forgotPassword(Request $request)
@@ -541,6 +762,8 @@ class AuthController extends Controller
         $user = $request->user();
         if (in_array($user->role, ['seller', 'reseller'])) {
             $user->load('farm');
+        } elseif ($user->role === 'rider') {
+            $user->load('rider');
         }
         return response()->json(['user' => $user]);
     }
@@ -578,6 +801,8 @@ class AuthController extends Controller
         $freshUser = $user->fresh();
         if (in_array($freshUser->role, ['seller', 'reseller'])) {
             $freshUser->load('farm');
+        } elseif ($freshUser->role === 'rider') {
+            $freshUser->load('rider');
         }
 
         return response()->json(['user' => $freshUser]);

@@ -38,12 +38,24 @@ const SellerLogin: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const redirectByRole = (role: string) => {
+  const redirectByRole = (role: string, status?: string) => {
+    const isApproved = status === 'verified' || status === 'approved' || status === 'active';
     if (role === 'customer') navigate('/customer');
-    else if (role === 'reseller' || role === 'seller') navigate('/seller/dashboard');
-    else if (role === 'admin') navigate('/admin/dashboard');
+    else if (role === 'reseller' || role === 'seller') {
+      navigate(isApproved ? '/seller/dashboard' : '/account-status');
+    } else if (role === 'rider') {
+      navigate(isApproved ? '/rider/dashboard' : '/account-status');
+    } else if (role === 'admin') navigate('/admin/dashboard');
     else navigate('/');
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const err = params.get('error');
+    if (err) {
+      setError(err);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const token = localStorage.getItem('poultry_token');
@@ -52,7 +64,7 @@ const SellerLogin: React.FC = () => {
       if (fromPath?.pathname && fromPath.pathname !== '/seller-login') {
         navigate(`${fromPath.pathname}${fromPath.search || ''}`, { replace: true });
       } else {
-        redirectByRole(user.role);
+        redirectByRole(user.role, user.status);
       }
     }
   }, [user]);
@@ -61,12 +73,12 @@ const SellerLogin: React.FC = () => {
     e.preventDefault();
     setError(null);
     try {
-      const user = await login('', password, businessName);
+      const loggedUser = await login('', password, businessName);
       const fromPath = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
       if (fromPath?.pathname && fromPath.pathname !== '/seller-login') {
         navigate(`${fromPath.pathname}${fromPath.search || ''}`, { replace: true });
       } else {
-        redirectByRole(user.role);
+        redirectByRole(loggedUser.role, loggedUser.status);
       }
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Login failed';

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../lib/axios';
 import ProductCard from '../../components/customer/ProductCard';
-import CustomerLocationCard from '../../components/customer/CustomerLocationCard';
 import StoresNearMe from '../../components/customer/StoresNearMe';
 import type { Product } from '../../types/marketplace';
 import { SearchIcon } from '../../components/common/SearchIcon';
@@ -127,8 +126,6 @@ export default function CustomerHomePage() {
 
       {/* Main Content Area */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Customer Location Detection & Interactive Map Card */}
-        <CustomerLocationCard />
 
         {/* View Switcher: Products Catalog vs Store Finder */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">

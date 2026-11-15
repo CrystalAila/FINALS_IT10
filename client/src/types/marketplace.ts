@@ -98,6 +98,10 @@ export type DeliveryAddress = {
   region: string;
   postalCode: string;
   streetAddress: string;
+  floorUnit?: string | null;
+  deliveryNotes?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
 };
 
 export type DeliveryType = 'pickup' | 'delivery';
@@ -169,8 +173,8 @@ export function resolveProductImage(image?: string | null, category?: string): s
     return resolved;
   }
 
-  // Get backend base URL (e.g. http://localhost:8000)
-  const backendBase = (import.meta.env.VITE_API_BASE || 'http://localhost:8000/api').replace(/\/api\/?$/, '');
+  // Get backend base URL
+  const backendBase = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || 'http://192.168.254.104.nip.io:8000').replace(/\/api\/?$/, '');
 
   // Normalize legacy localhost URLs without port 8000 or relative paths
   if (resolved.startsWith('http://localhost/storage/')) {
@@ -193,17 +197,26 @@ export type OrderStatus =
   | 'confirmed'
   | 'processing'
   | 'ready'
+  | 'ready_for_delivery'
+  | 'claimed'
   | 'out_for_delivery'
   | 'completed'
   | 'cancelled';
 
 export type Rider = {
   id: number;
-  farm_id: number;
+  user_id?: number | null;
+  farm_id?: number | null;
   fullname: string;
   phone: string;
+  address?: string | null;
   photo_path?: string | null;
   photo_url?: string;
+  license_photo_path?: string | null;
+  license_photo_url?: string;
+  vehicle_type?: string | null;
+  plate_number?: string | null;
+  status?: 'pending' | 'approved' | 'rejected';
   created_at?: string;
   updated_at?: string;
   user?: any;
@@ -236,6 +249,8 @@ export type Order = {
   city?: string | null;
   province?: string | null;
   postal_code?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   phone?: string | null;
   rider_name?: string | null;
   rider_id?: number | null;
@@ -262,6 +277,10 @@ export type SavedAddress = {
   region: string;
   postal_code: string;
   street_address: string;
+  floor_unit?: string | null;
+  delivery_notes?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   is_default: boolean;
   created_at?: string;
   updated_at?: string;
@@ -273,11 +292,65 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   price_confirmed: 'Price Confirmed',
   confirmed: 'Confirmed',
   processing: 'Processing',
-  ready: 'Ready',
+  ready: 'Ready for Pickup',
+  ready_for_delivery: 'Ready for Delivery',
+  claimed: 'Claimed by Rider',
   out_for_delivery: 'Out for Delivery',
   completed: 'Completed',
   cancelled: 'Cancelled',
 };
+
+export function getOrderStatusLabel(status: OrderStatus, deliveryType?: DeliveryType): string {
+  if (status === 'ready') {
+    return deliveryType === 'delivery' ? 'Ready for Delivery' : 'Ready for Pickup';
+  }
+  return ORDER_STATUS_LABELS[status] || status;
+}
+
+export function getAvailableOrderStatuses(
+  deliveryType?: DeliveryType,
+  hasPerKilo: boolean = false,
+  currentStatus?: OrderStatus
+): Array<{ value: OrderStatus; label: string }> {
+  if (deliveryType === 'pickup') {
+    const list: Array<{ value: OrderStatus; label: string }> = [
+      { value: 'pending', label: 'Pending' },
+    ];
+    if (hasPerKilo) {
+      list.push(
+        { value: 'awaiting_weighing', label: 'Awaiting Weighing' },
+        { value: 'price_confirmed', label: 'Price Confirmed' }
+      );
+    }
+    list.push(
+      { value: 'confirmed', label: 'Confirmed' },
+      { value: 'processing', label: 'Processing' },
+      { value: 'ready', label: 'Ready for Pickup' },
+      { value: 'completed', label: 'Completed' },
+      { value: 'cancelled', label: 'Cancelled' }
+    );
+    return list;
+  } else {
+    // Delivery (Cash on Delivery)
+    const list: Array<{ value: OrderStatus; label: string }> = [
+      { value: 'pending', label: 'Pending' },
+      { value: 'awaiting_weighing', label: 'Awaiting Weighing' },
+      { value: 'price_confirmed', label: 'Price Confirmed' },
+      { value: 'confirmed', label: 'Confirmed' },
+      { value: 'processing', label: 'Processing' },
+      { value: 'ready_for_delivery', label: 'Ready for Delivery' },
+      { value: 'completed', label: 'Completed' },
+      { value: 'cancelled', label: 'Cancelled' },
+    ];
+    if (currentStatus && ['claimed', 'out_for_delivery'].includes(currentStatus)) {
+      list.push({
+        value: currentStatus,
+        label: ORDER_STATUS_LABELS[currentStatus],
+      });
+    }
+    return list;
+  }
+}
 
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -286,6 +359,8 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   confirmed: 'bg-orange-100 text-orange-800',
   processing: 'bg-blue-100 text-blue-800',
   ready: 'bg-purple-100 text-purple-800',
+  ready_for_delivery: 'bg-purple-100 text-purple-800',
+  claimed: 'bg-indigo-100 text-indigo-800',
   out_for_delivery: 'bg-indigo-100 text-indigo-800',
   completed: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',

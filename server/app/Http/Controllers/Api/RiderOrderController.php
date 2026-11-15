@@ -24,7 +24,7 @@ class RiderOrderController extends Controller
             return response()->json(['orders' => []]);
         }
 
-        $orders = Order::with(['customer:id,fullname,username,phone', 'farm:id,name,location', 'items.product:id,name,image,category'])
+        $orders = Order::with(['customer:id,fullname,username,phone', 'farm:id,name,location,full_address,latitude,longitude', 'items.product:id,name,image,category'])
             ->where('rider_id', $rider->id)
             ->latest()
             ->get();
@@ -33,7 +33,65 @@ class RiderOrderController extends Controller
     }
 
     /**
-     * Get details of a specific order assigned to the rider.
+     * Get available delivery orders that have not yet been claimed by any rider.
+     */
+    public function availableOrders(Request $request)
+    {
+        $user = $request->user();
+        $rider = $user->rider;
+
+        if (!$rider) {
+            return response()->json(['orders' => []]);
+        }
+
+        $orders = Order::with(['customer:id,fullname,username,phone', 'farm:id,name,location,full_address,latitude,longitude', 'items.product:id,name,image,category'])
+            ->where('delivery_type', 'delivery')
+            ->whereNull('rider_id')
+            ->whereIn('status', ['ready', 'ready_for_delivery'])
+            ->latest()
+            ->get();
+
+        return response()->json(['orders' => $orders]);
+    }
+
+    /**
+     * Claim an available delivery order.
+     */
+    public function claimOrder(Request $request, int $id)
+    {
+        $user = $request->user();
+        $rider = $user->rider;
+
+        if (!$rider) {
+            return response()->json(['message' => 'Rider profile not found.'], 403);
+        }
+
+        $order = Order::with(['customer', 'farm', 'items.product'])
+            ->where('delivery_type', 'delivery')
+            ->findOrFail($id);
+
+        if ($order->rider_id && $order->rider_id !== $rider->id) {
+            return response()->json(['message' => 'This order has already been claimed by another rider.'], 422);
+        }
+
+        $order->rider_id = $rider->id;
+        $order->rider_name = $rider->fullname;
+        $order->status = 'claimed';
+        $order->save();
+
+        ActivityLogService::log(
+            "Rider '{$rider->fullname}' claimed delivery order #{$order->id}",
+            $user->id
+        );
+
+        return response()->json([
+            'message' => 'Order delivery claimed successfully!',
+            'order' => $order->fresh(['customer', 'farm', 'items.product']),
+        ]);
+    }
+
+    /**
+     * Get details of a specific order assigned to or claimed by the rider.
      */
     public function show(Request $request, int $id)
     {
@@ -44,8 +102,15 @@ class RiderOrderController extends Controller
             return response()->json(['message' => 'Rider profile not found.'], 403);
         }
 
-        $order = Order::with(['customer:id,fullname,username,phone', 'farm:id,name,location', 'items.product:id,name,image,category'])
-            ->where('rider_id', $rider->id)
+        $order = Order::with(['customer:id,fullname,username,phone', 'farm', 'items.product'])
+            ->where(function ($q) use ($rider, $id) {
+                $q->where('rider_id', $rider->id)
+                  ->orWhere(function ($sub) use ($id) {
+                      $sub->where('id', $id)
+                          ->where('delivery_type', 'delivery')
+                          ->whereNull('rider_id');
+                  });
+            })
             ->findOrFail($id);
 
         return response()->json(['order' => $order]);
@@ -64,7 +129,7 @@ class RiderOrderController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'status' => ['required', 'in:out_for_delivery,completed,cancelled'],
+            'status' => ['required', 'in:claimed,out_for_delivery,completed,cancelled'],
         ]);
 
         if ($validator->fails()) {

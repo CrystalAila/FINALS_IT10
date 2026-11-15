@@ -10,9 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/cli": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "@types/leaflet-routing-machine": "^3.2.9",
     "@types/react-router-dom": "^5.3.3",
     "axios": "^1.16.1",
     "leaflet": "^1.9.4",
+    "leaflet-routing-machine": "^3.2.12",
     "lucide-react": "^1.24.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
@@ -34,7 +39,7 @@
     "postcss": "^8.5.17",
     "tailwindcss": "^3.4.19",
     "typescript": "~6.0.2",
-    "typescript-eslint": "^8.59.2",
+    "typescript-eslint": "^7.3.1",
     "vite": "^8.0.12"
   }
 }

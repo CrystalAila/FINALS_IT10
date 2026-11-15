@@ -12,6 +12,8 @@ import {
   formatPrice,
   formatQuantityWithUnit,
   formatUnitSuffix,
+  getOrderStatusLabel,
+  getAvailableOrderStatuses,
 } from '../../types/marketplace';
 import type { Order, Rider } from '../../types/marketplace';
 import { SearchIcon } from '../../components/common/SearchIcon';
@@ -71,7 +73,7 @@ const OrderFulfillment: React.FC = () => {
       if (selectedOrder && selectedOrder.id === orderId) {
         setSelectedOrder((prev) => (prev ? { ...prev, status: updated.status } : null));
       }
-      toast.success(`Order #${orderId} marked as ${ORDER_STATUS_LABELS[status] || status}.`);
+      toast.success(`Order #${orderId} marked as ${getOrderStatusLabel(status, selectedOrder?.delivery_type)}.`);
     } catch (err: any) {
       const errMsg = err?.response?.data?.message ?? 'Failed to update order status.';
       toast.error(errMsg);
@@ -309,7 +311,7 @@ const OrderFulfillment: React.FC = () => {
                           ORDER_STATUS_COLORS[order.status]
                         }`}
                       >
-                        {ORDER_STATUS_LABELS[order.status]}
+                        {getOrderStatusLabel(order.status, order.delivery_type)}
                       </span>
                     </td>
 
@@ -348,7 +350,7 @@ const OrderFulfillment: React.FC = () => {
                       ORDER_STATUS_COLORS[selectedOrder.status]
                     }`}
                   >
-                    {ORDER_STATUS_LABELS[selectedOrder.status]}
+                    {getOrderStatusLabel(selectedOrder.status, selectedOrder.delivery_type)}
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
@@ -377,35 +379,29 @@ const OrderFulfillment: React.FC = () => {
                       disabled={
                         updatingStatus ||
                         (selectedOrder.delivery_type === 'delivery' &&
-                          ['completed', 'cancelled', 'out_for_delivery'].includes(selectedOrder.status))
+                          ['claimed', 'out_for_delivery'].includes(selectedOrder.status))
                       }
                       onChange={(e) => updateStatus(selectedOrder.id, e.target.value as Order['status'])}
                       className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-50"
                     >
-                      {Object.keys(ORDER_STATUS_LABELS)
-                        .filter((status) => {
-                          if (status === 'out_for_delivery') return false;
-                          if (
-                            selectedOrder.delivery_type === 'delivery' &&
-                            (status === 'completed' || status === 'cancelled')
-                          )
-                            return false;
-                          return true;
-                        })
-                        .map((status) => (
-                          <option key={status} value={status}>
-                            {ORDER_STATUS_LABELS[status as keyof typeof ORDER_STATUS_LABELS]}
-                          </option>
-                        ))}
-                      {selectedOrder.delivery_type === 'delivery' &&
-                        ['completed', 'cancelled', 'out_for_delivery'].includes(selectedOrder.status) && (
-                          <option value={selectedOrder.status} className="hidden">
-                            {ORDER_STATUS_LABELS[selectedOrder.status as keyof typeof ORDER_STATUS_LABELS]}
-                          </option>
-                        )}
+                      {getAvailableOrderStatuses(
+                        selectedOrder.delivery_type,
+                        selectedOrder.items?.some((i) => i.unit_type === 'per_kilo') ?? false,
+                        selectedOrder.status
+                      ).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                     </select>
-                    {selectedOrder.delivery_type === 'delivery' && (
-                      <p className="mt-1 text-[11px] text-slate-500">Rider handles delivery & completion.</p>
+                    {selectedOrder.delivery_type === 'delivery' ? (
+                      ['claimed', 'out_for_delivery'].includes(selectedOrder.status) ? (
+                        <p className="mt-1 text-[11px] text-slate-500">Rider claimed delivery & manages customer drop-off.</p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-slate-500">Mark 'Ready for Delivery' to send to rider claiming pool.</p>
+                      )
+                    ) : (
+                      <p className="mt-1 text-[11px] text-slate-500">Customer picks up and pays cash at farm.</p>
                     )}
                   </div>
 

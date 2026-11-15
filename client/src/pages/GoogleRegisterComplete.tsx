@@ -71,7 +71,9 @@ const GoogleRegisterComplete: React.FC = () => {
       if (user.role === 'customer') {
         navigate('/customer', { replace: true });
       } else if (user.role === 'seller' || user.role === 'reseller') {
-        navigate('/seller/dashboard', { replace: true });
+        const status = (user.status || '').toLowerCase();
+        const isApproved = status === 'verified' || status === 'approved' || status === 'active';
+        navigate(isApproved ? '/seller/dashboard' : '/account-status', { replace: true });
       } else {
         navigate('/', { replace: true });
       }

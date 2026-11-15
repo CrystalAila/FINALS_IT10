@@ -29,6 +29,10 @@ class AddressController extends Controller
             'region' => ['required', 'string', 'max:255'],
             'postal_code' => ['required', 'string', 'max:20'],
             'street_address' => ['required', 'string', 'max:500'],
+            'floor_unit' => ['nullable', 'string', 'max:255'],
+            'delivery_notes' => ['nullable', 'string', 'max:1000'],
+            'latitude' => ['nullable', 'numeric'],
+            'longitude' => ['nullable', 'numeric'],
             'is_default' => ['sometimes', 'boolean'],
         ]);
 
@@ -53,6 +57,10 @@ class AddressController extends Controller
                 'region' => $data['region'],
                 'postal_code' => $data['postal_code'],
                 'street_address' => $data['street_address'],
+                'floor_unit' => $data['floor_unit'] ?? null,
+                'delivery_notes' => $data['delivery_notes'] ?? null,
+                'latitude' => $data['latitude'] ?? null,
+                'longitude' => $data['longitude'] ?? null,
                 'is_default' => $makeDefault,
             ]);
         });
@@ -72,6 +80,10 @@ class AddressController extends Controller
             'region' => ['sometimes', 'string', 'max:255'],
             'postal_code' => ['sometimes', 'string', 'max:20'],
             'street_address' => ['sometimes', 'string', 'max:500'],
+            'floor_unit' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'delivery_notes' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'latitude' => ['sometimes', 'nullable', 'numeric'],
+            'longitude' => ['sometimes', 'nullable', 'numeric'],
             'is_default' => ['sometimes', 'boolean'],
         ]);
 

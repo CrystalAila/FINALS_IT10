@@ -34,25 +34,37 @@ const Login: React.FC = () => {
   const flashMessage = (location.state as { message?: string } | null)?.message;
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const err = params.get('error');
+    if (err) {
+      setError(err);
+    }
+  }, [location.search]);
+
+  useEffect(() => {
     const token = localStorage.getItem('poultry_token');
     if (user && token) {
-      handleSuccessfulAuth(user.role);
+      handleSuccessfulAuth(user);
     }
   }, [user]);
 
-  const redirectByRole = (role: string) => {
+  const redirectByRole = (role: string, status?: string) => {
+    const isApproved = status === 'verified' || status === 'approved' || status === 'active';
     if (role === 'customer') navigate('/customer');
-    else if (role === 'reseller' || role === 'seller') navigate('/seller/dashboard');
-    else if (role === 'admin') navigate('/admin/dashboard');
+    else if (role === 'reseller' || role === 'seller') {
+      navigate(isApproved ? '/seller/dashboard' : '/account-status');
+    } else if (role === 'rider') {
+      navigate(isApproved ? '/rider/dashboard' : '/account-status');
+    } else if (role === 'admin') navigate('/admin/dashboard');
     else navigate('/');
   };
 
-  const handleSuccessfulAuth = (role: string) => {
+  const handleSuccessfulAuth = (userObj: any) => {
     const fromPath = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
     if (fromPath?.pathname && fromPath.pathname !== '/login') {
       navigate(`${fromPath.pathname}${fromPath.search || ''}`, { replace: true });
     } else {
-      redirectByRole(role);
+      redirectByRole(userObj.role, userObj.status);
     }
   };
 
@@ -60,23 +72,24 @@ const Login: React.FC = () => {
     e.preventDefault();
     setError(null);
     try {
-      const user = await login(username, password);
-      handleSuccessfulAuth(user.role);
+      const loggedUser = await login(username, password);
+      handleSuccessfulAuth(loggedUser);
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Login failed';
       setError(msg);
     }
   };
 
-  const handleGoogleSuccess = (user: { id: number; fullname: string; username: string; role: string }) => {
+  const handleGoogleSuccess = (user: { id: number; fullname: string; username: string; role: string; status?: string }) => {
     const token = localStorage.getItem('poultry_token');
     if (token) googleLogin(user as any, token);
-    handleSuccessfulAuth(user.role);
+    handleSuccessfulAuth(user);
   };
 
   const handleGoogleRedirect = () => {
-    const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api';
-    window.location.href = `${API_BASE}/auth/google/redirect?role=customer`;
+    const baseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || 'http://192.168.254.104.nip.io:8000';
+    const apiBase = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
+    window.location.href = `${apiBase}/auth/google/redirect?role=customer`;
   };
 
   return (

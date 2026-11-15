@@ -19,7 +19,7 @@ export default function SellerRoutes() {
       <Route path="listings/edit/:id" element={<CreateProduct />} />
       <Route path="orders" element={<OrderFulfillment />} />
       <Route path="orders/:id" element={<SellerOrderDetailPage />} />
-      <Route path="riders" element={<RiderRegistry />} />
+      <Route path="riders" element={<Navigate to="dashboard" replace />} />
       <Route path="verification" element={<SellerVerification />} />
       <Route path="sales-report" element={<SalesReport />} />
       <Route path="" element={<Navigate to="dashboard" replace />} />

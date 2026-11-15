@@ -9,7 +9,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Rider extends Model
 {
     protected $fillable = [
-        'user_id', 'farm_id', 'fullname', 'phone', 'photo_path',
+        'user_id',
+        'farm_id',
+        'fullname',
+        'phone',
+        'address',
+        'photo_path',
+        'license_photo_path',
+        'vehicle_type',
+        'plate_number',
+        'status',
+        'rejection_reason',
+    ];
+
+    protected $appends = [
+        'photo_url',
+        'license_photo_url',
     ];
 
     /**
@@ -21,7 +36,7 @@ class Rider extends Model
     }
 
     /**
-     * Get the farm that owns the rider.
+     * Get the optional farm if previously affiliated.
      */
     public function farm(): BelongsTo
     {
@@ -34,5 +49,37 @@ class Rider extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    /**
+     * Accessor for full photo URL.
+     */
+    public function getPhotoUrlAttribute(): ?string
+    {
+        if (!$this->photo_path) {
+            return 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80';
+        }
+
+        if (filter_var($this->photo_path, FILTER_VALIDATE_URL)) {
+            return $this->photo_path;
+        }
+
+        return asset('storage/' . $this->photo_path);
+    }
+
+    /**
+     * Accessor for full driver's license photo URL.
+     */
+    public function getLicensePhotoUrlAttribute(): ?string
+    {
+        if (!$this->license_photo_path) {
+            return null;
+        }
+
+        if (filter_var($this->license_photo_path, FILTER_VALIDATE_URL)) {
+            return $this->license_photo_path;
+        }
+
+        return asset('storage/' . $this->license_photo_path);
     }
 }

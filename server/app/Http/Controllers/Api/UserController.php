@@ -73,6 +73,15 @@ class UserController extends Controller
                 'email' => $u->email,
                 'phone' => $phone,
                 'farm' => $farm,
+                'rider' => $u->rider ? [
+                    'id' => $u->rider->id,
+                    'address' => $u->rider->address,
+                    'vehicle_type' => $u->rider->vehicle_type,
+                    'plate_number' => $u->rider->plate_number,
+                    'photo_url' => $u->rider->photo_url,
+                    'license_photo_url' => $u->rider->license_photo_url,
+                    'status' => $u->rider->status,
+                ] : null,
             ];
         });
 
@@ -313,6 +322,37 @@ class UserController extends Controller
 
         ActivityLogService::log("Admin set seller {$user->username} status to Under Review");
         return response()->json(['message' => 'Seller permit is now under review']);
+    }
+
+    public function updatePermitDates(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'permit_issue_date' => ['nullable', 'date'],
+            'permit_expiry_date' => ['nullable', 'date'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = User::findOrFail($id);
+        $farm = $user->farm;
+        if ($farm) {
+            if ($request->has('permit_issue_date')) {
+                $farm->permit_issue_date = $request->permit_issue_date;
+            }
+            if ($request->has('permit_expiry_date')) {
+                $farm->permit_expiry_date = $request->permit_expiry_date;
+            }
+            $farm->save();
+        }
+
+        ActivityLogService::log("Admin updated permit dates for seller {$user->username}");
+        return response()->json([
+            'message' => 'Permit dates updated successfully',
+            'permit_issue_date' => $farm ? $farm->permit_issue_date : null,
+            'permit_expiry_date' => $farm ? $farm->permit_expiry_date : null,
+        ]);
     }
 
     public function getReportsSummary(Request $request)
@@ -712,6 +752,118 @@ class UserController extends Controller
                 'total_revenue' => $totalMarketRevenue,
             ],
             'sellers' => $mapped,
+        ]);
+    }
+
+    /**
+     * Get all rider applications for Admin review.
+     */
+    public function getRiderApplications(Request $request)
+    {
+        $status = $request->query('status'); // 'all', 'pending', 'approved', 'rejected'
+        $search = $request->query('search');
+
+        $query = \App\Models\Rider::with('user')->latest();
+
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('fullname', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('address', 'like', "%{$search}%")
+                  ->orWhere('vehicle_type', 'like', "%{$search}%")
+                  ->orWhere('plate_number', 'like', "%{$search}%")
+                  ->orWhereHas('user', fn ($u) => $u->where('username', 'like', "%{$search}%"));
+            });
+        }
+
+        $riders = $query->get()->map(function ($r) {
+            return [
+                'id' => $r->id,
+                'user_id' => $r->user_id,
+                'username' => $r->user ? $r->user->username : null,
+                'fullname' => $r->fullname,
+                'phone' => $r->phone,
+                'address' => $r->address,
+                'photo_path' => $r->photo_path,
+                'photo_url' => $r->photo_url,
+                'license_photo_path' => $r->license_photo_path,
+                'license_photo_url' => $r->license_photo_url,
+                'vehicle_type' => $r->vehicle_type,
+                'plate_number' => $r->plate_number,
+                'status' => $r->status,
+                'rejection_reason' => $r->rejection_reason,
+                'created_at' => $r->created_at ? $r->created_at->toIso8601String() : null,
+            ];
+        });
+
+        $counts = [
+            'all' => \App\Models\Rider::count(),
+            'pending' => \App\Models\Rider::where('status', 'pending')->count(),
+            'approved' => \App\Models\Rider::where('status', 'approved')->count(),
+            'rejected' => \App\Models\Rider::where('status', 'rejected')->count(),
+        ];
+
+        return response()->json([
+            'applications' => $riders,
+            'counts' => $counts,
+        ]);
+    }
+
+    /**
+     * Approve a rider's application.
+     */
+    public function approveRiderApplication(Request $request, int $id)
+    {
+        $rider = \App\Models\Rider::findOrFail($id);
+        $rider->status = 'approved';
+        $rider->rejection_reason = null;
+        $rider->save();
+
+        if ($rider->user_id) {
+            $user = User::find($rider->user_id);
+            if ($user) {
+                $user->status = 'verified';
+                $user->save();
+            }
+        }
+
+        ActivityLogService::log("Admin approved rider registration application for {$rider->fullname}");
+
+        return response()->json([
+            'message' => 'Rider registration approved successfully.',
+            'rider' => $rider->load('user'),
+        ]);
+    }
+
+    /**
+     * Reject a rider's application.
+     */
+    public function rejectRiderApplication(Request $request, int $id)
+    {
+        $rider = \App\Models\Rider::findOrFail($id);
+        $rider->status = 'rejected';
+        if ($request->filled('reason')) {
+            $rider->rejection_reason = $request->input('reason');
+        }
+        $rider->save();
+
+        if ($rider->user_id) {
+            $user = User::find($rider->user_id);
+            if ($user) {
+                $user->status = 'rejected';
+                $user->save();
+            }
+        }
+
+        ActivityLogService::log("Admin rejected rider registration application for {$rider->fullname}");
+
+        return response()->json([
+            'message' => 'Rider registration rejected.',
+            'rider' => $rider->load('user'),
         ]);
     }
 }

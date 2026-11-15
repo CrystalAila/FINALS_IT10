@@ -16,6 +16,15 @@ type User = {
   email?: string | null;
   phone?: string | null;
   is_rider?: boolean;
+  rider?: {
+    id: number;
+    address?: string | null;
+    vehicle_type?: string | null;
+    plate_number?: string | null;
+    photo_url?: string;
+    license_photo_url?: string;
+    status?: string;
+  } | null;
   farm?: {
     name: string;
     location: string;
@@ -359,24 +368,49 @@ const AdminUsers = () => {
               {/* Rider Registry Details (Riders only) */}
               {selectedUser.role === 'rider' && (
                 <div className="space-y-3">
-                  <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-500">Rider Affiliation</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-500">Rider Profile & Verification</h4>
+                    <a
+                      href="/admin/riders"
+                      className="text-xs font-bold text-brand hover:underline inline-flex items-center gap-1"
+                    >
+                      Manage in Rider Approvals →
+                    </a>
+                  </div>
                   <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 p-4 rounded-2xl border border-slate-200">
                     <div>
-                      <p className="text-slate-400 font-medium">Rider Phone</p>
+                      <p className="text-slate-400 font-medium text-xs">Rider Phone</p>
                       <p className="font-semibold text-slate-800">{selectedUser.phone || 'None'}</p>
                     </div>
                     <div>
-                      <p className="text-slate-400 font-medium">Affiliated Shop / Farm</p>
+                      <p className="text-slate-400 font-medium text-xs">Vehicle Type</p>
                       <p className="font-semibold text-slate-800">
-                        {selectedUser.farm?.name || 'Independent Rider'}
+                        {selectedUser.rider?.vehicle_type || 'Motorcycle'}
+                        {selectedUser.rider?.plate_number && (
+                          <span className="ml-1 text-xs text-slate-500 font-mono">({selectedUser.rider.plate_number})</span>
+                        )}
                       </p>
                     </div>
-                    {selectedUser.farm?.location && (
-                      <div className="col-span-2">
-                        <p className="text-slate-400 font-medium">Farm Location</p>
-                        <p className="font-semibold text-slate-800">{selectedUser.farm.location}</p>
-                      </div>
-                    )}
+                    <div className="col-span-2">
+                      <p className="text-slate-400 font-medium text-xs">Home / Base Address</p>
+                      <p className="font-semibold text-slate-800">{selectedUser.rider?.address || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 font-medium text-xs">Account Status</p>
+                      <span className={`inline-block mt-0.5 px-2.5 py-0.5 text-xs font-bold rounded-full capitalize ${
+                        selectedUser.status === 'verified' || selectedUser.status === 'active'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : selectedUser.status === 'rejected'
+                          ? 'bg-rose-100 text-rose-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {selectedUser.status === 'verified' ? 'Approved' : (selectedUser.status || 'Pending')}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 font-medium text-xs">Platform Role</p>
+                      <p className="font-semibold text-slate-800">Independent Rider</p>
+                    </div>
                   </div>
                 </div>
               )}

@@ -28,6 +28,14 @@ class RoleMiddleware
             return response()->json(['message' => 'Your seller account is not verified yet.'], 403);
         }
 
+        // Allow unverified/rejected riders to access application viewing and editing to resubmit details
+        $isRiderAppRoute = $request->is('api/rider/application*') || $request->is('api/rider/resubmit*')
+            || $request->is('rider/application*') || $request->is('rider/resubmit*');
+
+        if ($user->role === 'rider' && !in_array($user->status, ['verified', 'active']) && !$isRiderAppRoute) {
+            return response()->json(['message' => 'Your rider account is pending administrator approval or inactive.'], 403);
+        }
+
         if (! empty($roles)) {
             // Support both comma-separated single arg and multiple args
             $allowed = [];

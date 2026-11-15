@@ -63,6 +63,8 @@ class OrderController extends Controller
             'city' => ['nullable', 'string', 'max:100'],
             'province' => ['nullable', 'string', 'max:100'],
             'postal_code' => ['nullable', 'string', 'max:20'],
+            'latitude' => ['nullable', 'numeric'],
+            'longitude' => ['nullable', 'numeric'],
             'phone' => ['nullable', 'string', 'max:30'],
             'notes' => ['nullable', 'string'],
         ]);
@@ -153,6 +155,8 @@ class OrderController extends Controller
                     'city' => $data['city'] ?? null,
                     'province' => $data['province'] ?? null,
                     'postal_code' => $data['postal_code'] ?? null,
+                    'latitude' => $data['latitude'] ?? null,
+                    'longitude' => $data['longitude'] ?? null,
                     'phone' => $data['phone'] ?? null,
                     'notes' => $data['notes'] ?? null,
                 ]);
@@ -285,7 +289,7 @@ class OrderController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'status' => ['required', 'in:pending,awaiting_weighing,price_confirmed,confirmed,processing,ready,completed,cancelled'],
+            'status' => ['required', 'in:pending,awaiting_weighing,price_confirmed,confirmed,processing,ready,ready_for_delivery,completed,cancelled'],
         ]);
 
         if ($validator->fails()) {
@@ -297,7 +301,9 @@ class OrderController extends Controller
         $newStatus = $request->input('status');
 
         if ($order->delivery_type === 'delivery' && in_array($newStatus, ['completed', 'cancelled'])) {
-            return response()->json(['message' => 'Rider is the only one who can complete or cancel a delivery order.'], 403);
+            if (in_array($order->status, ['claimed', 'out_for_delivery'])) {
+                return response()->json(['message' => 'Rider has already claimed this delivery order. Rider handles final delivery status.'], 403);
+            }
         }
 
         if ($oldStatus === $newStatus) {
@@ -365,7 +371,10 @@ class OrderController extends Controller
         }
 
         $riderId = $request->input('rider_id');
-        $rider = Rider::where('farm_id', $farm->id)->findOrFail($riderId);
+        $rider = Rider::where(function ($q) {
+            $q->where('status', 'approved')
+              ->orWhereHas('user', fn ($u) => $u->whereIn('status', ['verified', 'active']));
+        })->findOrFail($riderId);
 
         $order->rider_id = $rider->id;
         $order->rider_name = $rider->fullname;

@@ -1,0 +1,13 @@
+import type { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.poultrylink.app',
+  appName: 'PoultryLink',
+  webDir: 'dist',
+  server: {
+    url: 'http://192.168.254.104.nip.io:5173',
+    cleartext: true
+  }
+};
+
+export default config;

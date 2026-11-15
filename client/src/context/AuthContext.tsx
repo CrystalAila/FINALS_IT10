@@ -12,6 +12,7 @@ export type User = {
   role: 'customer' | 'reseller' | 'seller' | 'admin' | 'rider';
   status?: 'pending' | 'under_review' | 'verified' | 'suspended' | 'rejected' | 'active';
   farm?: any;
+  rider?: any;
 };
 
 type AuthContextType = {
@@ -30,6 +31,7 @@ type AuthContextType = {
     role?: string;
     status?: string;
   } | FormData) => Promise<User>;
+  registerRider: (formData: FormData) => Promise<{ message: string; user?: any; rider?: any }>;
   googleLogin: (user: User, token: string) => void;
   updateProfile: (payload: {
     fullname?: string;
@@ -189,13 +191,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const headers = payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined;
       const res = await api.post('/register', payload, { headers });
       const { user: u, token: t } = res.data;
-      persistSession(u, t);
+      if (t) {
+        persistSession(u, t);
+      }
       try {
         await api.post('/logs', { activity: 'Frontend: user registered' });
       } catch {
         // ignore
       }
       return u as User;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const registerRider = async (formData: FormData) => {
+    setLoading(true);
+    try {
+      const res = await api.post('/rider/register', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      try {
+        await api.post('/logs', { activity: 'Frontend: rider registered application submitted' });
+      } catch {
+        // ignore
+      }
+      return res.data;
     } finally {
       setLoading(false);
     }
@@ -254,7 +275,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, initializing, login, register, googleLogin, updateProfile, logout, logActivity, setUser }}
+      value={{ user, token, loading, initializing, login, register, registerRider, googleLogin, updateProfile, logout, logActivity, setUser }}
     >
       {children}
     </AuthContext.Provider>

@@ -13,6 +13,8 @@ import {
   ORDER_STATUS_LABELS,
   PAYMENT_LABELS,
   SIZE_LABELS,
+  getOrderStatusLabel,
+  getAvailableOrderStatuses,
 } from '../../types/marketplace';
 
 export default function SellerOrderDetailPage() {
@@ -58,7 +60,7 @@ export default function SellerOrderDetailPage() {
     try {
       const res = await api.put(`/seller/orders/${id}/status`, { status });
       setOrder((prev) => (prev ? { ...prev, status: res.data.order.status } : null));
-      toast.success(`Order status updated to ${ORDER_STATUS_LABELS[status] || status}.`);
+      toast.success(`Order status updated to ${getOrderStatusLabel(status, order?.delivery_type)}.`);
     } catch (err: any) {
       const errMsg = err?.response?.data?.message ?? 'Failed to update order status.';
       toast.error(errMsg);
@@ -178,7 +180,7 @@ export default function SellerOrderDetailPage() {
               </div>
             </div>
             <span className={`rounded-full px-4 py-1.5 text-sm font-semibold ${ORDER_STATUS_COLORS[order.status]}`}>
-              {ORDER_STATUS_LABELS[order.status]}
+              {getOrderStatusLabel(order.status, order.delivery_type)}
             </span>
           </div>
 
@@ -419,25 +421,32 @@ export default function SellerOrderDetailPage() {
                 <label className="mb-2 block text-sm font-semibold text-slate-700">Change status</label>
               <select
                 value={order.status}
-                disabled={submitting || (order.delivery_type === 'delivery' && ['completed', 'cancelled', 'out_for_delivery'].includes(order.status))}
+                disabled={
+                  submitting ||
+                  (order.delivery_type === 'delivery' &&
+                    ['claimed', 'out_for_delivery'].includes(order.status))
+                }
                 onChange={(e) => updateStatus(e.target.value as Order['status'])}
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition disabled:opacity-50"
               >
-                {Object.keys(ORDER_STATUS_LABELS).filter(status => {
-                  if (status === 'out_for_delivery') return false;
-                  if (order.delivery_type === 'delivery' && (status === 'completed' || status === 'cancelled')) return false;
-                  return true;
-                }).map((status) => (
-                  <option key={status} value={status}>
-                    {ORDER_STATUS_LABELS[status as keyof typeof ORDER_STATUS_LABELS]}
+                {getAvailableOrderStatuses(
+                  order.delivery_type,
+                  order.items?.some((i) => i.unit_type === 'per_kilo') ?? false,
+                  order.status
+                ).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
-                {(order.delivery_type === 'delivery' && ['completed', 'cancelled', 'out_for_delivery'].includes(order.status)) && (
-                  <option value={order.status} className="hidden">{ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS]}</option>
-                )}
               </select>
-              {order.delivery_type === 'delivery' && (
-                <p className="mt-1 text-xs text-slate-500">Rider handles final delivery statuses.</p>
+              {order.delivery_type === 'delivery' ? (
+                ['claimed', 'out_for_delivery'].includes(order.status) ? (
+                  <p className="mt-1 text-xs text-slate-500">Rider claimed delivery & manages customer drop-off.</p>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-500">Mark 'Ready for Delivery' to send to rider claiming pool.</p>
+                )
+              ) : (
+                <p className="mt-1 text-xs text-slate-500">Customer picks up and pays cash at farm.</p>
               )}
             </div>
             {order.delivery_type === 'delivery' && (

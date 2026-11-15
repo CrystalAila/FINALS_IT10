@@ -92,6 +92,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               >
                 Dashboard
               </Link>
+              {user?.role === 'rider' && (
+                <Link
+                  to="/rider/application"
+                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/rider/application') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+                >
+                  Application & Documents
+                </Link>
+              )}
               {(user?.role === 'seller' || user?.role === 'reseller') && (
                 <>
                   {user.status !== 'verified' && (
@@ -127,12 +135,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                         )}
                       </Link>
                       <Link
-                        to="/seller/riders"
-                        className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/riders') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
-                      >
-                        Rider Registry
-                      </Link>
-                      <Link
                         to="/seller/sales-report"
                         className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/seller/sales-report') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
                       >
@@ -155,6 +157,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/permits') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
                   >
                     Permits Verifications
+                  </Link>
+                  <Link
+                    to="/admin/riders"
+                    className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${isActive('/admin/riders') ? 'bg-white/20 text-white font-semibold shadow-sm' : 'text-emerald-50 hover:bg-white/10 hover:text-white'}`}
+                  >
+                    Rider Approvals
                   </Link>
                   <Link
                     to="/admin/market"

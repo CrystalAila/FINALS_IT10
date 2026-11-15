@@ -21,36 +21,74 @@ export const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
     );
   }
 
-  // Verify both active user and valid token
+  // Verify active user and token with localStorage fallback to prevent premature kicks
   const storedToken = localStorage.getItem('poultry_token');
-  if (!user || !token || !storedToken) {
+  const storedUserRaw = localStorage.getItem('poultry_user');
+  let activeUser = user;
+  if (!activeUser && storedUserRaw) {
+    try {
+      activeUser = JSON.parse(storedUserRaw);
+    } catch {
+      activeUser = null;
+    }
+  }
+  const activeToken = token || storedToken;
+
+  if (!activeUser || !activeToken || !storedToken) {
+    if (location.pathname.startsWith('/rider')) {
+      return <Navigate to="/rider/login" state={{ from: location }} replace />;
+    }
+    if (location.pathname.startsWith('/seller')) {
+      return <Navigate to="/seller-login" state={{ from: location }} replace />;
+    }
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Seller verification status guard
-  if ((user.role === 'seller' || user.role === 'reseller') && user.status !== 'verified') {
-    const allowedPaths = ['/seller/dashboard', '/seller/verification', '/seller/shop'];
-    const currentPath = location.pathname;
-    if (!allowedPaths.some((path) => currentPath === path || currentPath.startsWith(path + '/'))) {
-      return <Navigate to="/seller/dashboard" replace />;
+  // Dedicated account status route is always accessible to any authenticated user
+  if (location.pathname === '/account-status' || location.pathname === '/pending-approval') {
+    return <>{children}</>;
+  }
+
+  const status = (activeUser.status || '').toLowerCase();
+  const isApproved = status === 'verified' || status === 'approved' || status === 'active';
+
+  // Rider approval guard: pending / rejected riders cannot access main operational dashboard
+  if (activeUser.role === 'rider' && !isApproved) {
+    const allowedUnapprovedRiderPaths = ['/account-status', '/pending-approval', '/rider/application'];
+    const isAllowed = allowedUnapprovedRiderPaths.some(
+      (path) => location.pathname === path || location.pathname.startsWith(path + '/')
+    );
+    if (!isAllowed) {
+      return <Navigate to="/account-status" replace />;
     }
-  } else if ((user.role === 'seller' || user.role === 'reseller') && user.status === 'verified') {
-    if (location.pathname === '/seller/verification') {
-      return <Navigate to="/seller/dashboard" replace />;
+  }
+
+  // Seller approval guard: pending / rejected sellers cannot access main operational dashboard
+  if ((activeUser.role === 'seller' || activeUser.role === 'reseller') && !isApproved) {
+    const allowedUnapprovedSellerPaths = ['/account-status', '/pending-approval', '/seller/verification', '/seller/shop'];
+    const isAllowed = allowedUnapprovedSellerPaths.some(
+      (path) => location.pathname === path || location.pathname.startsWith(path + '/')
+    );
+    if (!isAllowed) {
+      return <Navigate to="/account-status" replace />;
     }
   }
 
   const allowed = toArray(allowedRoles);
-  if (allowed.length > 0 && !allowed.includes(user.role)) {
-    // Redirect to user's appropriate role dashboard
+  if (allowed.length > 0 && !allowed.includes(activeUser.role)) {
+    // Redirect to user's appropriate role destination
     const roleDashboard =
-      user.role === 'admin'
+      activeUser.role === 'admin'
         ? '/admin/dashboard'
-        : user.role === 'customer'
+        : activeUser.role === 'customer'
         ? '/customer'
-        : user.role === 'rider'
-        ? '/rider/dashboard'
-        : '/seller/dashboard';
+        : activeUser.role === 'rider'
+        ? isApproved
+          ? '/rider/dashboard'
+          : '/account-status'
+        : isApproved
+        ? '/seller/dashboard'
+        : '/account-status';
     return <Navigate to={roleDashboard} replace />;
   }
 

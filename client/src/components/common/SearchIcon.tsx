@@ -5,9 +5,12 @@ interface SearchIconProps {
 }
 
 export const SearchIcon: React.FC<SearchIconProps> = ({ className = 'h-4 w-4 text-slate-400' }) => {
+  const hasSize = /h-\d+|w-\d+|size-\d+/.test(className);
+  const finalClass = hasSize ? className : `h-4 w-4 ${className}`.trim();
+
   return (
     <svg
-      className={className}
+      className={finalClass}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
