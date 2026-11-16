@@ -13,7 +13,9 @@ export default function GoogleLoginButton({ role, disabled, text }: GoogleLoginB
 
   const handleGoogleRedirect = () => {
     setLoading(true);
-    const baseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || 'http://192.168.254.104.nip.io:8000';
+    localStorage.setItem('poultry_oauth_role', role);
+    sessionStorage.setItem('poultry_oauth_role', role);
+    const baseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}`;
     const apiBase = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
     window.location.href = `${apiBase}/auth/google/redirect?role=${role}`;
   };

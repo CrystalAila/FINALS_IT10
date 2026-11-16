@@ -2,6 +2,7 @@ import { useState, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AuthLayout from '../../components/customer/AuthLayout';
+import GoogleLoginButton from '../../components/customer/GoogleLoginButton';
 import { CheckCircle2, Upload, Eye, EyeOff, User, Phone, MapPin, Lock, FileText, Truck } from 'lucide-react';
 
 const RiderRegister: React.FC = () => {
@@ -437,6 +438,14 @@ const RiderRegister: React.FC = () => {
             'Submit Rider Application'
           )}
         </button>
+
+        <div className="relative flex items-center gap-3 py-1">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs text-slate-400 font-medium">or</span>
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        <GoogleLoginButton role="rider" disabled={loading} text="Continue with Google" />
       </form>
     </AuthLayout>
   );

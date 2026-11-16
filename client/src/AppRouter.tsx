@@ -24,6 +24,7 @@ import AdminMarket from './pages/AdminMarket';
 import AdminReports from './pages/AdminReports';
 import AdminSettings from './pages/AdminSettings';
 import AdminShares from './pages/AdminShares';
+import AccountStatus from './pages/AccountStatus';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 
@@ -35,10 +36,11 @@ const AppRouter: React.FC = () => {
     if (!user || !hasToken) return '/login';
     if (user.role === 'customer') return '/customer';
     if (user.role === 'admin') return '/admin/dashboard';
+    const isApproved = user.status === 'verified' || (user.status as string) === 'approved' || user.status === 'active';
     if (user.role === 'rider') {
-      return (user.status === 'verified' || user.status === 'active') ? '/rider/dashboard' : '/rider/application';
+      return isApproved ? '/rider/dashboard' : '/account-status';
     }
-    return '/seller/dashboard';
+    return isApproved ? '/seller/dashboard' : '/account-status';
   };
 
   return (
@@ -55,6 +57,22 @@ const AppRouter: React.FC = () => {
         <Route path="/rider/login" element={<RiderLogin />} />
         <Route path="/rider/register" element={<RiderRegister />} />
         <Route path="/rider/register/google-complete" element={<RiderGoogleRegisterComplete />} />
+        <Route
+          path="/account-status"
+          element={
+            <ProtectedRoute>
+              <AccountStatus />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pending-approval"
+          element={
+            <ProtectedRoute>
+              <AccountStatus />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/rider/dashboard"

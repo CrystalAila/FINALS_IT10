@@ -5,7 +5,7 @@ const getApiBase = () => {
   if (envUrl) {
     return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`;
   }
-  return 'http://192.168.254.104.nip.io:8000/api';
+  return `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api`;
 };
 
 const API_BASE = getApiBase();

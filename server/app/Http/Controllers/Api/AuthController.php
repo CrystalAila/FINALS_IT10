@@ -372,7 +372,10 @@ class AuthController extends Controller
 
     public function googleRedirect(Request $request)
     {
-        $role = $request->input('role', 'customer');
+        $role = strtolower((string) $request->query('role', $request->input('role', 'customer')));
+        if (!in_array($role, ['customer', 'seller', 'rider'], true)) {
+            $role = 'customer';
+        }
 
         // Check if Google Client ID is configured. If not, bypass to callback directly for mock/demo purposes.
         if (!config('services.google.client_id')) {
@@ -397,10 +400,16 @@ class AuthController extends Controller
 
         $stateData = [];
         if ($request->has('state')) {
-            $stateData = json_decode(base64_decode($request->input('state')), true) ?? [];
+            $decoded = json_decode(base64_decode((string) $request->input('state')), true);
+            if (is_array($decoded)) {
+                $stateData = $decoded;
+            }
         }
 
-        $role = $stateData['role'] ?? 'customer';
+        $role = strtolower((string) ($stateData['role'] ?? $request->query('role', 'customer')));
+        if (!in_array($role, ['customer', 'seller', 'rider'], true)) {
+            $role = 'customer';
+        }
         $isMock = $stateData['mock'] ?? false;
 
         $googleUser = null;
@@ -437,14 +446,6 @@ class AuthController extends Controller
         }
 
         if (!$user) {
-            if ($role === 'rider') {
-                return redirect()->away($frontendUrl . '/rider/register/google-complete?google_id=' . urlencode($googleId) . '&email=' . urlencode($email ?? '') . '&fullname=' . urlencode($fullname));
-            }
-            if ($role === 'seller') {
-                return redirect()->away($frontendUrl . '/register/google-complete?google_id=' . urlencode($googleId) . '&email=' . urlencode($email ?? '') . '&fullname=' . urlencode($fullname) . '&role=seller');
-            }
-
-            // For customer / general login: automatically create customer account
             $baseUsername = 'g' . substr(preg_replace('/[^a-z0-9]/', '', strtolower($googleId)), 0, 12);
             $username = $baseUsername;
             $suffix = 1;
@@ -459,15 +460,19 @@ class AuthController extends Controller
                 'username' => $username,
                 'email' => $email,
                 'google_id' => $googleId,
-                'role' => 'customer',
-                'status' => 'active',
+                'role' => $role,
+                'status' => $role === 'customer' ? 'active' : 'pending',
                 'password' => null,
             ]);
+        } elseif ($role !== 'customer' && $user->role === 'customer') {
+            // Upgrade/assign requested role if user previously signed in as customer by default
+            // and now clicked the Seller or Rider Google button to onboard.
+            $user->role = $role;
+            $user->status = 'pending';
+            $user->save();
         }
 
-        $token = $user->createToken('api-token')->plainTextToken;
-
-        ActivityLogService::log('User logged in via Google', $user->id);
+        $effectiveRole = $user->role === 'reseller' ? 'seller' : $user->role;
 
         if (in_array($user->role, ['seller', 'reseller'])) {
             $user->load('farm');
@@ -475,11 +480,38 @@ class AuthController extends Controller
             $user->load('rider');
         }
 
-        return redirect()->away($frontendUrl . '/auth/callback?token=' . $token . '&user=' . urlencode(json_encode($user)));
+        $needsRegistration = false;
+        if (in_array($effectiveRole, ['seller', 'reseller'])) {
+            $farm = $user->farm;
+            $needsRegistration = !$farm || empty($farm->permit_file);
+        } elseif ($effectiveRole === 'rider') {
+            $rider = $user->rider;
+            $needsRegistration = !$rider || empty($rider->photo_path) || empty($rider->license_photo_path);
+        }
+
+        $token = $user->createToken('api-token')->plainTextToken;
+
+        ActivityLogService::log('User logged in via Google', $user->id);
+
+        $queryParams = [
+            'token' => $token,
+            'role' => $effectiveRole,
+            'needs_registration' => $needsRegistration ? '1' : '0',
+            'google_id' => $googleId,
+            'email' => $email ?? '',
+            'fullname' => $user->fullname ?? $fullname,
+            'user' => json_encode($user),
+        ];
+
+        return redirect()->away($frontendUrl . '/auth/callback?' . http_build_query($queryParams));
     }
 
     public function googleRegister(Request $request)
     {
+        $existingUser = User::where('google_id', $request->input('google_id'))
+            ->when($request->filled('email'), fn ($q) => $q->orWhere('email', $request->input('email')))
+            ->first();
+
         $rules = [
             'google_id' => ['required', 'string'],
             'fullname' => ['required', 'string', 'max:255', 'regex:/^[\pL\s\.\'\-]+$/u'],
@@ -489,7 +521,12 @@ class AuthController extends Controller
         ];
 
         if ($request->input('role') === 'seller') {
-            $rules['business_name'] = ['required', 'string', 'max:255', 'unique:users,business_name'];
+            $rules['business_name'] = [
+                'required',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('users', 'business_name')->ignore($existingUser?->id),
+            ];
             $rules['permit'] = ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:10240'];
             $rules['permit_issue_date'] = ['required', 'date'];
             $rules['permit_expiry_date'] = ['required', 'date', 'after_or_equal:permit_issue_date'];
@@ -503,33 +540,39 @@ class AuthController extends Controller
 
         $data = $validator->validated();
 
-        if (User::where('google_id', $data['google_id'])->exists()) {
-            return response()->json(['message' => 'This Google account is already registered.'], 422);
-        }
-        if ($data['email'] && User::where('email', $data['email'])->exists()) {
-            return response()->json(['message' => 'This email address is already registered.'], 422);
-        }
+        if ($existingUser) {
+            $existingUser->update([
+                'fullname' => $data['fullname'],
+                'email' => $data['email'] ?: $existingUser->email,
+                'phone' => $data['phone'] ?? $existingUser->phone,
+                'google_id' => $data['google_id'],
+                'role' => $data['role'],
+                'status' => in_array($data['role'], ['seller', 'reseller']) ? 'pending' : 'active',
+                'business_name' => $data['business_name'] ?? $existingUser->business_name,
+            ]);
+            $user = $existingUser;
+        } else {
+            $baseUsername = 'g' . substr(preg_replace('/[^a-z0-9]/', '', strtolower($data['google_id'])), 0, 12);
+            $username = $baseUsername;
+            $suffix = 1;
 
-        $baseUsername = 'g' . substr(preg_replace('/[^a-z0-9]/', '', strtolower($data['google_id'])), 0, 12);
-        $username = $baseUsername;
-        $suffix = 1;
+            while (User::where('username', $username)->exists()) {
+                $username = $baseUsername . $suffix;
+                $suffix++;
+            }
 
-        while (User::where('username', $username)->exists()) {
-            $username = $baseUsername . $suffix;
-            $suffix++;
+            $user = User::create([
+                'fullname' => $data['fullname'],
+                'username' => $username,
+                'email' => $data['email'],
+                'phone' => $data['phone'] ?? null,
+                'google_id' => $data['google_id'],
+                'role' => $data['role'],
+                'password' => null,
+                'status' => in_array($data['role'], ['seller', 'reseller']) ? 'pending' : 'active',
+                'business_name' => $data['business_name'] ?? null,
+            ]);
         }
-
-        $user = User::create([
-            'fullname' => $data['fullname'],
-            'username' => $username,
-            'email' => $data['email'],
-            'phone' => $data['phone'] ?? null,
-            'google_id' => $data['google_id'],
-            'role' => $data['role'],
-            'password' => null,
-            'status' => 'active',
-            'business_name' => $data['business_name'] ?? null,
-        ]);
 
         if (in_array($user->role, ['seller', 'reseller'])) {
             $permitPath = null;
@@ -548,17 +591,19 @@ class AuthController extends Controller
                 $user->save();
             }
 
-            \App\Models\Farm::create([
-                'user_id' => $user->id,
-                'name' => $data['business_name'] ?? ($user->fullname . ' Farm'),
-                'permit_status' => $farmStatus,
-                'permit_file' => $permitPath,
-                'permit_issue_date' => $issueDate->toDateString(),
-                'permit_expiry_date' => $expiryDate->toDateString(),
-                'location' => 'Roxas City, Capiz',
-                'description' => 'Newly registered local poultry farm.',
-                'rating' => 5.0,
-            ]);
+            \App\Models\Farm::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'name' => $data['business_name'] ?? ($user->fullname . ' Farm'),
+                    'permit_status' => $farmStatus,
+                    'permit_file' => $permitPath,
+                    'permit_issue_date' => $issueDate->toDateString(),
+                    'permit_expiry_date' => $expiryDate->toDateString(),
+                    'location' => 'Roxas City, Capiz',
+                    'description' => 'Newly registered local poultry farm.',
+                    'rating' => 5.0,
+                ]
+            );
         }
 
         $token = $user->createToken('api-token')->plainTextToken;
@@ -582,13 +627,9 @@ class AuthController extends Controller
             $request->files->set('license', $request->file('license_photo'));
         }
 
-        // Early uniqueness checks before heavy validation
-        if (User::where('google_id', $request->input('google_id'))->exists()) {
-            return response()->json(['message' => 'This Google account is already registered. Please sign in instead.'], 422);
-        }
-        if ($request->filled('email') && User::where('email', $request->input('email'))->exists()) {
-            return response()->json(['message' => 'This email address is already registered to another account.'], 422);
-        }
+        $existingUser = User::where('google_id', $request->input('google_id'))
+            ->when($request->filled('email'), fn ($q) => $q->orWhere('email', $request->input('email')))
+            ->first();
 
         $rules = [
             'google_id'    => ['required', 'string'],
@@ -610,18 +651,6 @@ class AuthController extends Controller
 
         $data = $validator->validated();
 
-        // Auto-generate a username from the rider's full name
-        $baseUsername = preg_replace('/[^A-Za-z0-9]/', '', strtolower($data['fullname']));
-        if (empty($baseUsername)) {
-            $baseUsername = 'rider_' . Str::random(6);
-        }
-        $username = substr($baseUsername, 0, 15);
-        $suffix = 1;
-        while (User::where('username', $username)->exists()) {
-            $username = substr($baseUsername, 0, 12) . $suffix;
-            $suffix++;
-        }
-
         $photoPath = $request->hasFile('photo')
             ? $request->file('photo')->store('riders', 'public')
             : null;
@@ -630,28 +659,54 @@ class AuthController extends Controller
             ? $request->file('license')->store('rider_licenses', 'public')
             : null;
 
-        $user = User::create([
-            'fullname'  => $data['fullname'],
-            'username'  => $username,
-            'email'     => $data['email'] ?? null,
-            'google_id' => $data['google_id'],
-            'phone'     => $data['phone'],
-            'password'  => null,
-            'role'      => 'rider',
-            'status'    => 'pending',
-        ]);
+        if ($existingUser) {
+            $existingUser->update([
+                'fullname'  => $data['fullname'],
+                'email'     => $data['email'] ?? $existingUser->email,
+                'google_id' => $data['google_id'],
+                'phone'     => $data['phone'],
+                'role'      => 'rider',
+                'status'    => 'pending',
+            ]);
+            $user = $existingUser;
+        } else {
+            // Auto-generate a username from the rider's full name
+            $baseUsername = preg_replace('/[^A-Za-z0-9]/', '', strtolower($data['fullname']));
+            if (empty($baseUsername)) {
+                $baseUsername = 'rider_' . Str::random(6);
+            }
+            $username = substr($baseUsername, 0, 15);
+            $suffix = 1;
+            while (User::where('username', $username)->exists()) {
+                $username = substr($baseUsername, 0, 12) . $suffix;
+                $suffix++;
+            }
 
-        $rider = \App\Models\Rider::create([
-            'user_id'            => $user->id,
-            'fullname'           => $data['fullname'],
-            'phone'              => $data['phone'],
-            'address'            => $data['address'],
-            'photo_path'         => $photoPath,
-            'license_photo_path' => $licensePath,
-            'vehicle_type'       => $data['vehicle_type'] ?? null,
-            'plate_number'       => $data['plate_number'] ?? null,
-            'status'             => 'pending',
-        ]);
+            $user = User::create([
+                'fullname'  => $data['fullname'],
+                'username'  => $username,
+                'email'     => $data['email'] ?? null,
+                'google_id' => $data['google_id'],
+                'phone'     => $data['phone'],
+                'password'  => null,
+                'role'      => 'rider',
+                'status'    => 'pending',
+            ]);
+        }
+
+        $rider = \App\Models\Rider::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'fullname'           => $data['fullname'],
+                'phone'              => $data['phone'],
+                'address'            => $data['address'],
+                'photo_path'         => $photoPath,
+                'license_photo_path' => $licensePath,
+                'vehicle_type'       => $data['vehicle_type'] ?? null,
+                'plate_number'       => $data['plate_number'] ?? null,
+                'status'             => 'pending',
+            ]
+        );
 
         $token = $user->createToken('api-token')->plainTextToken;
 

@@ -7,12 +7,12 @@ import api from '../lib/axios';
 const GoogleRegisterComplete: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { googleLogin } = useAuth();
+  const { user: authUser, googleLogin } = useAuth();
 
-  const googleId = searchParams.get('google_id') || '';
-  const initialEmail = searchParams.get('email') || '';
-  const initialFullname = searchParams.get('fullname') || '';
-  const role = searchParams.get('role') || 'customer';
+  const googleId = searchParams.get('google_id') || authUser?.google_id || (authUser?.id ? String(authUser.id) : '');
+  const initialEmail = searchParams.get('email') || authUser?.email || '';
+  const initialFullname = searchParams.get('fullname') || authUser?.fullname || '';
+  const role = searchParams.get('role') || (authUser?.role === 'reseller' ? 'seller' : authUser?.role) || 'seller';
 
   const [fullname, setFullname] = useState(initialFullname);
   const [email, setEmail] = useState(initialEmail);
@@ -61,11 +61,40 @@ const GoogleRegisterComplete: React.FC = () => {
         formData.append('permit_expiry_date', permitExpiryDate);
       }
 
-      const res = await api.post('/auth/google/register', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      let res;
+      try {
+        res = await api.post('/auth/google/register', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } catch (primaryErr: any) {
+        const msg = (primaryErr?.response?.data?.message || '').toLowerCase();
+        if (role === 'seller' && primaryErr?.response?.status === 422 && msg.includes('already registered')) {
+          const fallbackData = new FormData();
+          const randSuffix = Math.floor(1000 + Math.random() * 9000);
+          const cleanUser = fullname.replace(/[^A-Za-z0-9]/g, '').toLowerCase().slice(0, 10) || 'seller';
+          fallbackData.append('fullname', fullname.trim());
+          fallbackData.append('username', `${cleanUser}${randSuffix}`);
+          fallbackData.append('business_name', businessName.trim());
+          fallbackData.append('phone', phone.trim());
+          fallbackData.append('password', `Google_${googleId.slice(0, 10) || randSuffix}!`);
+          fallbackData.append('role', 'seller');
+          fallbackData.append('status', 'pending');
+          if (permitFile) {
+            fallbackData.append('permit', permitFile);
+          }
+          fallbackData.append('permit_issue_date', permitIssueDate);
+          fallbackData.append('permit_expiry_date', permitExpiryDate);
+
+          res = await api.post('/register', fallbackData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+        } else {
+          throw primaryErr;
+        }
+      }
 
       const { user, token } = res.data;
+      localStorage.removeItem('poultry_role_override');
       googleLogin(user, token);
 
       if (user.role === 'customer') {

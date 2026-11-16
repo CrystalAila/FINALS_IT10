@@ -59,7 +59,7 @@ const SellerLogin: React.FC = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('poultry_token');
-    if (user && token) {
+    if (user && token && (user.role === 'seller' || user.role === 'reseller')) {
       const fromPath = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
       if (fromPath?.pathname && fromPath.pathname !== '/seller-login') {
         navigate(`${fromPath.pathname}${fromPath.search || ''}`, { replace: true });

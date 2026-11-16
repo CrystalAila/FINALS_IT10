@@ -174,7 +174,7 @@ export function resolveProductImage(image?: string | null, category?: string): s
   }
 
   // Get backend base URL
-  const backendBase = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || 'http://192.168.254.104.nip.io:8000').replace(/\/api\/?$/, '');
+  const backendBase = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}`).replace(/\/api\/?$/, '');
 
   // Normalize legacy localhost URLs without port 8000 or relative paths
   if (resolved.startsWith('http://localhost/storage/')) {

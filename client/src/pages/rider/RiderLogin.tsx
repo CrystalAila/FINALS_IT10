@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -11,10 +11,29 @@ const RiderLogin: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { login, loading } = useAuth();
+  const { user, login, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const flashMessage = (location.state as { message?: string } | null)?.message;
+
+  // Handle error from URL query params (e.g., Google OAuth role-mismatch redirect)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const urlError = params.get('error');
+    if (urlError) {
+      setError(decodeURIComponent(urlError));
+    }
+  }, [location.search]);
+
+  // Auto-redirect if already logged in as a rider
+  useEffect(() => {
+    const token = localStorage.getItem('poultry_token');
+    if (user && token && user.role === 'rider') {
+      const status = (user.status || '').toLowerCase();
+      const isApproved = status === 'verified' || status === 'approved' || status === 'active';
+      navigate(isApproved ? '/rider/dashboard' : '/account-status', { replace: true });
+    }
+  }, [user, navigate]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();

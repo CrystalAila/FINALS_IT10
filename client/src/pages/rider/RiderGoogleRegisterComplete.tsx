@@ -17,12 +17,12 @@ import {
 const RiderGoogleRegisterComplete: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { googleLogin } = useAuth();
+  const { user: authUser, googleLogin } = useAuth();
 
-  // Pre-filled from Google OAuth callback
-  const googleId    = searchParams.get('google_id') || '';
-  const initialEmail    = searchParams.get('email') || '';
-  const initialFullname = searchParams.get('fullname') || '';
+  // Pre-filled from Google OAuth callback or authenticated user state
+  const googleId    = searchParams.get('google_id') || authUser?.google_id || (authUser?.id ? String(authUser.id) : '');
+  const initialEmail    = searchParams.get('email') || authUser?.email || '';
+  const initialFullname = searchParams.get('fullname') || authUser?.fullname || '';
 
   // Form fields
   const [fullname, setFullname]     = useState(initialFullname);
@@ -118,13 +118,46 @@ const RiderGoogleRegisterComplete: React.FC = () => {
       if (vehicleType.trim()) formData.append('vehicle_type', vehicleType.trim());
       if (plateNumber.trim()) formData.append('plate_number', plateNumber.trim());
 
-      const res = await api.post('/auth/google/rider-register', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      let user;
+      let token;
+      try {
+        const res = await api.post('/auth/google/rider-register', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        user = res.data.user;
+        token = res.data.token;
+      } catch (primaryErr: any) {
+        const msg = (primaryErr?.response?.data?.message || '').toLowerCase();
+        if (primaryErr?.response?.status === 422 && msg.includes('already registered')) {
+          const fallbackPassword = `Google_${googleId.slice(0, 10) || 'Rider123'}!`;
+          const fallbackData = new FormData();
+          fallbackData.append('fullname', fullname.trim());
+          fallbackData.append('phone', phone.trim());
+          fallbackData.append('address', address.trim());
+          fallbackData.append('password', fallbackPassword);
+          fallbackData.append('photo', photoFile);
+          fallbackData.append('license', licenseFile);
+          if (vehicleType.trim()) fallbackData.append('vehicle_type', vehicleType.trim());
+          if (plateNumber.trim()) fallbackData.append('plate_number', plateNumber.trim());
 
-      const { user, token } = res.data;
+          const regRes = await api.post('/rider/register', fallbackData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          const createdUser = regRes.data?.user;
+          const createdRider = regRes.data?.rider;
+          const loginRes = await api.post('/login', {
+            username: createdUser?.username || phone.trim(),
+            password: fallbackPassword,
+          });
+          user = { ...(loginRes.data?.user || createdUser), rider: loginRes.data?.user?.rider || createdRider };
+          token = loginRes.data?.token || localStorage.getItem('poultry_token');
+        } else {
+          throw primaryErr;
+        }
+      }
 
       // Log the rider in and send them to the account status page (pending state)
+      localStorage.removeItem('poultry_role_override');
       googleLogin(user, token);
       navigate('/account-status', { replace: true });
     } catch (err: any) {

@@ -56,20 +56,68 @@ const GoogleCallback: React.FC = () => {
           throw new Error('Failed to retrieve your user profile.');
         }
 
-        // 3. Save session in AuthContext & localStorage
+        // 3. Apply requested role from query params or saved OAuth portal role
+        const savedOAuthRole = (sessionStorage.getItem('poultry_oauth_role') ||
+          localStorage.getItem('poultry_oauth_role')) as User['role'] | null;
+        sessionStorage.removeItem('poultry_oauth_role');
+        localStorage.removeItem('poultry_oauth_role');
+
+        const queryRole = (searchParams.get('role') || savedOAuthRole) as User['role'] | null;
+        const originalBackendRole = authenticatedUser.role;
+
+        if (queryRole && ['customer', 'seller', 'reseller', 'rider', 'admin'].includes(queryRole)) {
+          if (queryRole !== 'customer' || !originalBackendRole) {
+            authenticatedUser = {
+              ...authenticatedUser,
+              role: queryRole,
+              status:
+                originalBackendRole === 'customer' && (queryRole === 'seller' || queryRole === 'rider')
+                  ? 'pending'
+                  : authenticatedUser.status,
+            };
+            localStorage.setItem('poultry_role_override', queryRole);
+          } else {
+            localStorage.removeItem('poultry_role_override');
+          }
+        }
         googleLogin(authenticatedUser, token);
 
-        // 4. Redirect cleanly based on role and verification status
-        const role = authenticatedUser.role;
+        // 4. Redirect cleanly based on role, onboarding state, and verification status
+        const role = (
+          (queryRole && queryRole !== 'customer' ? queryRole : null) ||
+          authenticatedUser.role ||
+          queryRole ||
+          'customer'
+        ).toLowerCase();
+        const needsRegistrationParam = searchParams.get('needs_registration') === '1';
         const status = (authenticatedUser.status || '').toLowerCase();
         const isApproved = status === 'verified' || status === 'approved' || status === 'active';
 
-        if (role === 'customer') {
-          navigate('/customer', { replace: true });
-        } else if (role === 'seller' || role === 'reseller') {
-          navigate(isApproved ? '/seller/dashboard' : '/account-status', { replace: true });
+        const googlePrefillParams = new URLSearchParams({
+          google_id: searchParams.get('google_id') || authenticatedUser.google_id || String(authenticatedUser.id || ''),
+          email: searchParams.get('email') || authenticatedUser.email || '',
+          fullname: searchParams.get('fullname') || authenticatedUser.fullname || '',
+          role: role === 'reseller' ? 'seller' : role,
+        }).toString();
+
+        if (role === 'seller' || role === 'reseller') {
+          const incompleteSellerProfile =
+            needsRegistrationParam || !authenticatedUser.farm || !authenticatedUser.farm.permit_file;
+          if (incompleteSellerProfile) {
+            navigate(`/register/google-complete?${googlePrefillParams}`, { replace: true });
+          } else {
+            navigate(isApproved ? '/seller/dashboard' : '/account-status', { replace: true });
+          }
         } else if (role === 'rider') {
-          navigate(isApproved ? '/rider/dashboard' : '/account-status', { replace: true });
+          const incompleteRiderProfile =
+            needsRegistrationParam || !authenticatedUser.rider || !authenticatedUser.rider.license_photo_path;
+          if (incompleteRiderProfile) {
+            navigate(`/rider/register/google-complete?${googlePrefillParams}`, { replace: true });
+          } else {
+            navigate(isApproved ? '/rider/dashboard' : '/account-status', { replace: true });
+          }
+        } else if (role === 'customer') {
+          navigate('/customer', { replace: true });
         } else if (role === 'admin') {
           navigate('/admin/dashboard', { replace: true });
         } else {

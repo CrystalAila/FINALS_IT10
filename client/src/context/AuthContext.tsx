@@ -113,7 +113,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const res = await api.get('/user');
         const userData = res.data.user as User;
-        const normalizedUser = { ...userData, role: normalizeRole(userData.role) };
+        const roleOverride = localStorage.getItem('poultry_role_override') as User['role'] | null;
+        const effectiveRole =
+          roleOverride && userData.role === 'customer' ? normalizeRole(roleOverride) : normalizeRole(userData.role);
+        const normalizedUser = {
+          ...userData,
+          role: effectiveRole,
+          status:
+            roleOverride && userData.role === 'customer' && (effectiveRole === 'seller' || effectiveRole === 'rider')
+              ? 'pending'
+              : userData.status,
+        };
         setUser(normalizedUser);
         setToken(savedToken);
       } catch (err: any) {
@@ -173,6 +183,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const res = await api.post('/login', payload);
       const { user: u, token: t } = res.data;
+      localStorage.removeItem('poultry_role_override');
+      localStorage.removeItem('poultry_oauth_role');
+      sessionStorage.removeItem('poultry_oauth_role');
       persistSession(u, t);
       try {
         await api.post('/logs', { activity: 'Frontend: user logged in' });
@@ -262,6 +275,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     localStorage.removeItem('poultry_token');
     localStorage.removeItem('poultry_user');
+    localStorage.removeItem('poultry_role_override');
+    localStorage.removeItem('poultry_oauth_role');
+    sessionStorage.removeItem('poultry_oauth_role');
     setLoading(false);
   };
 

@@ -5,7 +5,6 @@ const config: CapacitorConfig = {
   appName: 'PoultryLink',
   webDir: 'dist',
   server: {
-    url: 'http://192.168.254.104.nip.io:5173',
     cleartext: true
   }
 };

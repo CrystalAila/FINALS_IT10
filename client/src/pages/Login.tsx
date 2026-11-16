@@ -87,7 +87,9 @@ const Login: React.FC = () => {
   };
 
   const handleGoogleRedirect = () => {
-    const baseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || 'http://192.168.254.104.nip.io:8000';
+    localStorage.setItem('poultry_oauth_role', 'customer');
+    sessionStorage.setItem('poultry_oauth_role', 'customer');
+    const baseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}`;
     const apiBase = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
     window.location.href = `${apiBase}/auth/google/redirect?role=customer`;
   };
@@ -251,12 +253,18 @@ const Login: React.FC = () => {
             </Link>
           </p>
 
-          {/* Seller Portal Navigation */}
+          {/* Portal Navigation */}
           <div className="mt-6 pt-5 border-t border-gray-100 flex flex-col gap-3">
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>Are you a poultry seller?</span>
               <Link to="/seller-login" className="font-semibold text-brand hover:underline">
                 Seller Portal →
+              </Link>
+            </div>
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span>Are you a delivery rider?</span>
+              <Link to="/rider/login" className="font-semibold text-brand hover:underline">
+                Rider Portal →
               </Link>
             </div>
           </div>
