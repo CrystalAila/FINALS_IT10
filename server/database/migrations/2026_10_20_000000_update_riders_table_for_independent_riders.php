@@ -60,12 +60,11 @@ return new class extends Migration
             }
 
             // Ensure existing riders with active/verified user accounts are marked approved
-            DB::statement("
-                UPDATE riders r
-                JOIN users u ON r.user_id = u.id
-                SET r.status = 'approved'
-                WHERE u.status IN ('active', 'verified')
-            ");
+            DB::table('riders')
+                ->whereIn('user_id', function ($query) {
+                    $query->select('id')->from('users')->whereIn('status', ['active', 'verified']);
+                })
+                ->update(['status' => 'approved']);
         }
     }
 
