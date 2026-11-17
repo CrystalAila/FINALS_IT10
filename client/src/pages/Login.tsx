@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AuthLeftPanel from '../components/customer/AuthLeftPanel';
+import { getDestinationForUser, hasValidSession } from '../utils/authRedirect';
 
 // Official PoultryLink Business Logo
 const ChickenInCartLogo: React.FC<{ size?: 'sm' | 'lg'; light?: boolean }> = ({ size = 'sm', light = false }) => {
@@ -42,30 +43,13 @@ const Login: React.FC = () => {
   }, [location.search]);
 
   useEffect(() => {
-    const token = localStorage.getItem('poultry_token');
-    if (user && token) {
-      handleSuccessfulAuth(user);
+    if (user && hasValidSession(user)) {
+      navigate(getDestinationForUser(user), { replace: true });
     }
-  }, [user]);
-
-  const redirectByRole = (role: string, status?: string) => {
-    const isApproved = status === 'verified' || status === 'approved' || status === 'active';
-    if (role === 'customer') navigate('/customer');
-    else if (role === 'reseller' || role === 'seller') {
-      navigate(isApproved ? '/seller/dashboard' : '/account-status');
-    } else if (role === 'rider') {
-      navigate(isApproved ? '/rider/dashboard' : '/account-status');
-    } else if (role === 'admin') navigate('/admin/dashboard');
-    else navigate('/');
-  };
+  }, [user, navigate]);
 
   const handleSuccessfulAuth = (userObj: any) => {
-    const fromPath = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
-    if (fromPath?.pathname && fromPath.pathname !== '/login') {
-      navigate(`${fromPath.pathname}${fromPath.search || ''}`, { replace: true });
-    } else {
-      redirectByRole(userObj.role, userObj.status);
-    }
+    navigate(getDestinationForUser(userObj), { replace: true });
   };
 
   const submit = async (e: FormEvent) => {
@@ -87,8 +71,12 @@ const Login: React.FC = () => {
   };
 
   const handleGoogleRedirect = () => {
-    localStorage.setItem('poultry_oauth_role', 'customer');
+    ['role', 'pending_role', 'poultry_oauth_role', 'poultry_role_override', 'oauth_role'].forEach((k) => {
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
+    });
     sessionStorage.setItem('poultry_oauth_role', 'customer');
+    localStorage.setItem('poultry_oauth_role', 'customer');
     const baseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}`;
     const apiBase = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
     window.location.href = `${apiBase}/auth/google/redirect?role=customer`;

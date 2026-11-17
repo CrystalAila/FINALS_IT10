@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AuthLayout from '../../components/customer/AuthLayout';
 import GoogleLoginButton from '../../components/customer/GoogleLoginButton';
+import { getDestinationForUser, hasValidSession } from '../../utils/authRedirect';
 import { Eye, EyeOff, User, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const RiderLogin: React.FC = () => {
@@ -27,11 +28,8 @@ const RiderLogin: React.FC = () => {
 
   // Auto-redirect if already logged in as a rider
   useEffect(() => {
-    const token = localStorage.getItem('poultry_token');
-    if (user && token && user.role === 'rider') {
-      const status = (user.status || '').toLowerCase();
-      const isApproved = status === 'verified' || status === 'approved' || status === 'active';
-      navigate(isApproved ? '/rider/dashboard' : '/account-status', { replace: true });
+    if (user && hasValidSession(user) && user.role === 'rider') {
+      navigate(getDestinationForUser(user), { replace: true });
     }
   }, [user, navigate]);
 
@@ -39,15 +37,9 @@ const RiderLogin: React.FC = () => {
     e.preventDefault();
     setError(null);
     try {
-      const user = await login(identifier.trim(), password);
-      if (user.role === 'rider') {
-        const status = (user.status || '').toLowerCase();
-        const isApproved = status === 'verified' || status === 'approved' || status === 'active';
-        if (!isApproved) {
-          navigate('/account-status');
-          return;
-        }
-        navigate('/rider/dashboard');
+      const loggedUser = await login(identifier.trim(), password);
+      if (loggedUser.role === 'rider') {
+        navigate(getDestinationForUser(loggedUser), { replace: true });
       } else {
         setError('This portal is reserved for delivery riders only. Please use the appropriate portal for your account.');
       }

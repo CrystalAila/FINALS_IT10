@@ -27,20 +27,15 @@ import AdminShares from './pages/AdminShares';
 import AccountStatus from './pages/AccountStatus';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
+import { getDestinationForUser, getStoredUser, hasValidSession } from './utils/authRedirect';
 
 const AppRouter: React.FC = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   const homeRedirect = () => {
-    const hasToken = Boolean(localStorage.getItem('poultry_token'));
-    if (!user || !hasToken) return '/login';
-    if (user.role === 'customer') return '/customer';
-    if (user.role === 'admin') return '/admin/dashboard';
-    const isApproved = user.status === 'verified' || (user.status as string) === 'approved' || user.status === 'active';
-    if (user.role === 'rider') {
-      return isApproved ? '/rider/dashboard' : '/account-status';
-    }
-    return isApproved ? '/seller/dashboard' : '/account-status';
+    const activeUser = getStoredUser(user);
+    if (!activeUser || !hasValidSession(user, token)) return '/login';
+    return getDestinationForUser(activeUser);
   };
 
   return (
@@ -48,14 +43,19 @@ const AppRouter: React.FC = () => {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/seller-login" element={<SellerLogin />} />
+        <Route path="/seller/login" element={<SellerLogin />} />
         <Route path="/register" element={<Register />} />
         <Route path="/seller-register" element={<SellerRegister />} />
+        <Route path="/seller/register" element={<SellerRegister />} />
+        <Route path="/seller/onboarding" element={<GoogleRegisterComplete />} />
+        <Route path="/seller/register/google-complete" element={<GoogleRegisterComplete />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/auth/callback" element={<GoogleCallback />} />
         <Route path="/register/google-complete" element={<GoogleRegisterComplete />} />
         <Route path="/rider/login" element={<RiderLogin />} />
         <Route path="/rider/register" element={<RiderRegister />} />
+        <Route path="/rider/onboarding" element={<RiderGoogleRegisterComplete />} />
         <Route path="/rider/register/google-complete" element={<RiderGoogleRegisterComplete />} />
         <Route
           path="/account-status"
@@ -221,19 +221,10 @@ const AppRouter: React.FC = () => {
         <Route path="/dashboard" element={<Navigate to={homeRedirect()} replace />} />
 
         <Route path="/" element={<Navigate to={homeRedirect()} replace />} />
-        <Route path="/seller" element={<Navigate to="/seller/dashboard" replace />} />
-        <Route path="/reseller" element={<Navigate to="/seller/dashboard" replace />} />
-        <Route path="/rider" element={<Navigate to="/rider/dashboard" replace />} />
-        <Route
-          path="*"
-          element={
-            !user || !localStorage.getItem('poultry_token') ? (
-              <Navigate to="/login" replace />
-            ) : (
-              <Navigate to={homeRedirect()} replace />
-            )
-          }
-        />
+        <Route path="/seller" element={<Navigate to={homeRedirect()} replace />} />
+        <Route path="/reseller" element={<Navigate to={homeRedirect()} replace />} />
+        <Route path="/rider" element={<Navigate to={homeRedirect()} replace />} />
+        <Route path="*" element={<Navigate to={homeRedirect()} replace />} />
       </Routes>
     </BrowserRouter>
   );

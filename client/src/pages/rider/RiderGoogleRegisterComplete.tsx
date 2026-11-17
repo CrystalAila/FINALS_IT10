@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AuthLayout from '../../components/customer/AuthLayout';
 import api from '../../lib/axios';
+import { getStoredUser } from '../../utils/authRedirect';
 import {
   AlertCircle,
   CheckCircle2,
@@ -17,10 +18,11 @@ import {
 const RiderGoogleRegisterComplete: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user: authUser, googleLogin } = useAuth();
+  const { user: contextUser, googleLogin } = useAuth();
+  const authUser = getStoredUser(contextUser);
 
   // Pre-filled from Google OAuth callback or authenticated user state
-  const googleId    = searchParams.get('google_id') || authUser?.google_id || (authUser?.id ? String(authUser.id) : '');
+  const googleId    = searchParams.get('google_id') || authUser?.google_id || (authUser?.id ? String(authUser.id) : 'rider_oauth');
   const initialEmail    = searchParams.get('email') || authUser?.email || '';
   const initialFullname = searchParams.get('fullname') || authUser?.fullname || '';
 

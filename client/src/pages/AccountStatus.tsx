@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/axios';
+import { getStoredUser, isUserApproved } from '../utils/authRedirect';
 import {
   Clock,
   CheckCircle2,
@@ -22,15 +23,15 @@ import {
 } from 'lucide-react';
 
 const AccountStatus: React.FC = () => {
-  const { user, setUser, logout } = useAuth();
+  const { user: contextUser, setUser, logout } = useAuth();
+  const user = getStoredUser(contextUser);
   const navigate = useNavigate();
 
   const [refreshing, setRefreshing] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
   if (!user) {
-    navigate('/login', { replace: true });
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
   const role = user.role;
@@ -39,7 +40,7 @@ const AccountStatus: React.FC = () => {
 
   // Determine normalized status
   const rawStatus = (user.status || 'pending').toLowerCase();
-  const isApproved = rawStatus === 'verified' || rawStatus === 'approved' || rawStatus === 'active';
+  const isApproved = isUserApproved(user);
   const isRejected = rawStatus === 'rejected';
   const isPending = !isApproved && !isRejected;
 

@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GoogleLoginButton from '../components/customer/GoogleLoginButton';
 import AuthLeftPanel from '../components/customer/AuthLeftPanel';
+import { getDestinationForUser, hasValidSession } from '../utils/authRedirect';
 
 // Official PoultryLink Brand Logo
 const ChickenInCartLogo: React.FC<{ size?: 'sm' | 'md' | 'lg'; light?: boolean }> = ({
@@ -38,17 +39,6 @@ const SellerLogin: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const redirectByRole = (role: string, status?: string) => {
-    const isApproved = status === 'verified' || status === 'approved' || status === 'active';
-    if (role === 'customer') navigate('/customer');
-    else if (role === 'reseller' || role === 'seller') {
-      navigate(isApproved ? '/seller/dashboard' : '/account-status');
-    } else if (role === 'rider') {
-      navigate(isApproved ? '/rider/dashboard' : '/account-status');
-    } else if (role === 'admin') navigate('/admin/dashboard');
-    else navigate('/');
-  };
-
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const err = params.get('error');
@@ -58,28 +48,17 @@ const SellerLogin: React.FC = () => {
   }, [location.search]);
 
   useEffect(() => {
-    const token = localStorage.getItem('poultry_token');
-    if (user && token && (user.role === 'seller' || user.role === 'reseller')) {
-      const fromPath = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
-      if (fromPath?.pathname && fromPath.pathname !== '/seller-login') {
-        navigate(`${fromPath.pathname}${fromPath.search || ''}`, { replace: true });
-      } else {
-        redirectByRole(user.role, user.status);
-      }
+    if (user && hasValidSession(user) && (user.role === 'seller' || user.role === 'reseller')) {
+      navigate(getDestinationForUser(user), { replace: true });
     }
-  }, [user]);
+  }, [user, navigate]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     try {
       const loggedUser = await login('', password, businessName);
-      const fromPath = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
-      if (fromPath?.pathname && fromPath.pathname !== '/seller-login') {
-        navigate(`${fromPath.pathname}${fromPath.search || ''}`, { replace: true });
-      } else {
-        redirectByRole(loggedUser.role, loggedUser.status);
-      }
+      navigate(getDestinationForUser(loggedUser), { replace: true });
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Login failed';
       setError(msg);

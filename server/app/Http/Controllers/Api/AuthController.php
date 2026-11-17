@@ -372,7 +372,7 @@ class AuthController extends Controller
 
     public function googleRedirect(Request $request)
     {
-        $role = strtolower((string) $request->query('role', $request->input('role', 'customer')));
+        $role = strtolower(trim((string) $request->query('role', $request->input('role', 'customer'))));
         if (!in_array($role, ['customer', 'seller', 'rider'], true)) {
             $role = 'customer';
         }
@@ -399,16 +399,16 @@ class AuthController extends Controller
         $frontendUrl = rtrim(env('FRONTEND_URL') ?: config('app.frontend_url', 'http://localhost:5173'), '/');
 
         $stateData = [];
-        if ($request->has('state')) {
+        if ($request->filled('state')) {
             $decoded = json_decode(base64_decode((string) $request->input('state')), true);
             if (is_array($decoded)) {
                 $stateData = $decoded;
             }
         }
 
-        $role = strtolower((string) ($stateData['role'] ?? $request->query('role', 'customer')));
-        if (!in_array($role, ['customer', 'seller', 'rider'], true)) {
-            $role = 'customer';
+        $requestedRole = strtolower(trim((string) ($stateData['role'] ?? $request->query('role', 'customer'))));
+        if (!in_array($requestedRole, ['customer', 'seller', 'rider'], true)) {
+            $requestedRole = 'customer';
         }
         $isMock = $stateData['mock'] ?? false;
 
@@ -460,33 +460,42 @@ class AuthController extends Controller
                 'username' => $username,
                 'email' => $email,
                 'google_id' => $googleId,
-                'role' => $role,
-                'status' => $role === 'customer' ? 'active' : 'pending',
+                'role' => $requestedRole,
+                'status' => $requestedRole === 'customer' ? 'active' : 'pending',
                 'password' => null,
             ]);
-        } elseif ($role !== 'customer' && $user->role === 'customer') {
-            // Upgrade/assign requested role if user previously signed in as customer by default
-            // and now clicked the Seller or Rider Google button to onboard.
-            $user->role = $role;
-            $user->status = 'pending';
-            $user->save();
         }
 
-        $effectiveRole = $user->role === 'reseller' ? 'seller' : $user->role;
+        $user->load(['farm', 'rider']);
 
-        if (in_array($user->role, ['seller', 'reseller'])) {
-            $user->load('farm');
-        } elseif ($user->role === 'rider') {
-            $user->load('rider');
-        }
+        $hasCompletedSellerProfile = $user->farm && !empty($user->farm->permit_file);
+        $hasCompletedRiderProfile = $user->rider && !empty($user->rider->license_photo_path) && !empty($user->rider->photo_path);
 
-        $needsRegistration = false;
-        if (in_array($effectiveRole, ['seller', 'reseller'])) {
-            $farm = $user->farm;
-            $needsRegistration = !$farm || empty($farm->permit_file);
-        } elseif ($effectiveRole === 'rider') {
-            $rider = $user->rider;
-            $needsRegistration = !$rider || empty($rider->photo_path) || empty($rider->license_photo_path);
+        if ($user->role === 'admin') {
+            $effectiveRole = 'admin';
+            $needsRegistration = false;
+        } elseif (!$hasCompletedSellerProfile && !$hasCompletedRiderProfile) {
+            // User does not have a completed seller or rider profile yet — adopt the requested portal role cleanly
+            $targetStatus = $requestedRole === 'customer' ? 'active' : 'pending';
+            if ($user->role !== $requestedRole || $user->status !== $targetStatus) {
+                $user->role = $requestedRole;
+                $user->status = $targetStatus;
+                $user->save();
+            }
+            $effectiveRole = $requestedRole;
+            $needsRegistration = in_array($effectiveRole, ['seller', 'rider'], true);
+        } else {
+            // User already has a completed seller or rider profile
+            if ($requestedRole === 'seller' && !$hasCompletedSellerProfile) {
+                $effectiveRole = 'seller';
+                $needsRegistration = true;
+            } elseif ($requestedRole === 'rider' && !$hasCompletedRiderProfile) {
+                $effectiveRole = 'rider';
+                $needsRegistration = true;
+            } else {
+                $effectiveRole = $user->role === 'reseller' ? 'seller' : $user->role;
+                $needsRegistration = false;
+            }
         }
 
         $token = $user->createToken('api-token')->plainTextToken;

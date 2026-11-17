@@ -102,6 +102,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const bootstrap = async () => {
+      if (window.location.pathname === '/auth/callback') {
+        setInitializing(false);
+        return;
+      }
+
       const savedToken = localStorage.getItem('poultry_token');
       if (!savedToken) {
         setUser(null);
@@ -113,14 +118,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const res = await api.get('/user');
         const userData = res.data.user as User;
-        const roleOverride = localStorage.getItem('poultry_role_override') as User['role'] | null;
+        let savedRole: User['role'] | null = null;
+        try {
+          const rawSaved = localStorage.getItem('poultry_user');
+          if (rawSaved) {
+            const parsed = JSON.parse(rawSaved) as User;
+            if (parsed && parsed.id === userData.id) {
+              savedRole = normalizeRole(parsed.role);
+            }
+          }
+        } catch {
+          // ignore
+        }
+
+        const hasProfile =
+          Boolean(userData.farm?.permit_file) || Boolean(userData.rider?.license_photo_path);
         const effectiveRole =
-          roleOverride && userData.role === 'customer' ? normalizeRole(roleOverride) : normalizeRole(userData.role);
+          !hasProfile && savedRole && userData.role !== 'admin'
+            ? savedRole
+            : normalizeRole(userData.role);
+
         const normalizedUser = {
           ...userData,
           role: effectiveRole,
           status:
-            roleOverride && userData.role === 'customer' && (effectiveRole === 'seller' || effectiveRole === 'rider')
+            !hasProfile && effectiveRole === 'customer'
+              ? 'active'
+              : !hasProfile && (effectiveRole === 'seller' || effectiveRole === 'rider')
               ? 'pending'
               : userData.status,
         };

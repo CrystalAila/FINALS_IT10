@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth, type User } from '../context/AuthContext';
 import api from '../lib/axios';
+import { isRiderIncomplete, isSellerIncomplete, isUserApproved } from '../utils/authRedirect';
 
 const GoogleCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -56,42 +57,62 @@ const GoogleCallback: React.FC = () => {
           throw new Error('Failed to retrieve your user profile.');
         }
 
-        // 3. Apply requested role from query params or saved OAuth portal role
-        const savedOAuthRole = (sessionStorage.getItem('poultry_oauth_role') ||
-          localStorage.getItem('poultry_oauth_role')) as User['role'] | null;
-        sessionStorage.removeItem('poultry_oauth_role');
-        localStorage.removeItem('poultry_oauth_role');
+        // 3. Determine requested role and immediately clear all temporary role/pending_role storage keys
+        const savedOAuthRole = (
+          sessionStorage.getItem('poultry_oauth_role') ||
+          localStorage.getItem('poultry_oauth_role') ||
+          sessionStorage.getItem('pending_role') ||
+          localStorage.getItem('pending_role') ||
+          sessionStorage.getItem('role') ||
+          localStorage.getItem('role')
+        ) as User['role'] | null;
 
-        const queryRole = (searchParams.get('role') || savedOAuthRole) as User['role'] | null;
-        const originalBackendRole = authenticatedUser.role;
+        ['role', 'pending_role', 'poultry_oauth_role', 'poultry_role_override', 'oauth_role'].forEach((k) => {
+          localStorage.removeItem(k);
+          sessionStorage.removeItem(k);
+        });
 
-        if (queryRole && ['customer', 'seller', 'reseller', 'rider', 'admin'].includes(queryRole)) {
-          if (queryRole !== 'customer' || !originalBackendRole) {
-            authenticatedUser = {
-              ...authenticatedUser,
-              role: queryRole,
-              status:
-                originalBackendRole === 'customer' && (queryRole === 'seller' || queryRole === 'rider')
-                  ? 'pending'
-                  : authenticatedUser.status,
-            };
-            localStorage.setItem('poultry_role_override', queryRole);
+        const requestedRole = ((searchParams.get('role') || savedOAuthRole || 'customer') as string).toLowerCase();
+        const hasCompletedSellerProfile = Boolean(authenticatedUser.farm && authenticatedUser.farm.permit_file);
+        const hasCompletedRiderProfile = Boolean(
+          authenticatedUser.rider && authenticatedUser.rider.license_photo_path
+        );
+
+        let effectiveRole: User['role'] = authenticatedUser.role || 'customer';
+
+        if (authenticatedUser.role === 'admin') {
+          effectiveRole = 'admin';
+        } else if (!hasCompletedSellerProfile && !hasCompletedRiderProfile) {
+          if (requestedRole === 'seller' || requestedRole === 'rider' || requestedRole === 'customer') {
+            effectiveRole = requestedRole;
           } else {
-            localStorage.removeItem('poultry_role_override');
+            effectiveRole = 'customer';
           }
+        } else if (requestedRole === 'seller' && !hasCompletedSellerProfile) {
+          effectiveRole = 'seller';
+        } else if (requestedRole === 'rider' && !hasCompletedRiderProfile) {
+          effectiveRole = 'rider';
+        } else if (authenticatedUser.role === 'reseller') {
+          effectiveRole = 'seller';
         }
+
+        authenticatedUser = {
+          ...authenticatedUser,
+          role: effectiveRole,
+          status:
+            effectiveRole === 'customer'
+              ? 'active'
+              : !hasCompletedSellerProfile && !hasCompletedRiderProfile
+              ? 'pending'
+              : authenticatedUser.status,
+        };
+
         googleLogin(authenticatedUser, token);
 
         // 4. Redirect cleanly based on role, onboarding state, and verification status
-        const role = (
-          (queryRole && queryRole !== 'customer' ? queryRole : null) ||
-          authenticatedUser.role ||
-          queryRole ||
-          'customer'
-        ).toLowerCase();
+        const role = effectiveRole.toLowerCase();
         const needsRegistrationParam = searchParams.get('needs_registration') === '1';
-        const status = (authenticatedUser.status || '').toLowerCase();
-        const isApproved = status === 'verified' || status === 'approved' || status === 'active';
+        const isApproved = isUserApproved(authenticatedUser);
 
         const googlePrefillParams = new URLSearchParams({
           google_id: searchParams.get('google_id') || authenticatedUser.google_id || String(authenticatedUser.id || ''),
@@ -101,16 +122,14 @@ const GoogleCallback: React.FC = () => {
         }).toString();
 
         if (role === 'seller' || role === 'reseller') {
-          const incompleteSellerProfile =
-            needsRegistrationParam || !authenticatedUser.farm || !authenticatedUser.farm.permit_file;
+          const incompleteSellerProfile = needsRegistrationParam || isSellerIncomplete(authenticatedUser);
           if (incompleteSellerProfile) {
             navigate(`/register/google-complete?${googlePrefillParams}`, { replace: true });
           } else {
             navigate(isApproved ? '/seller/dashboard' : '/account-status', { replace: true });
           }
         } else if (role === 'rider') {
-          const incompleteRiderProfile =
-            needsRegistrationParam || !authenticatedUser.rider || !authenticatedUser.rider.license_photo_path;
+          const incompleteRiderProfile = needsRegistrationParam || isRiderIncomplete(authenticatedUser);
           if (incompleteRiderProfile) {
             navigate(`/rider/register/google-complete?${googlePrefillParams}`, { replace: true });
           } else {

@@ -8,12 +8,15 @@ import SellerOrderDetailPage from './SellerOrderDetailPage';
 import RiderRegistry from './RiderRegistry';
 import SellerVerification from './SellerVerification';
 import SalesReport from './SalesReport';
+import GoogleRegisterComplete from '../GoogleRegisterComplete';
 
 export default function SellerRoutes() {
   return (
     <Routes>
       <Route path="dashboard" element={<SellerDashboard />} />
       <Route path="shop" element={<ShopConfiguration />} />
+      <Route path="onboarding" element={<GoogleRegisterComplete />} />
+      <Route path="register" element={<GoogleRegisterComplete />} />
       <Route path="listings" element={<MyListings />} />
       <Route path="listings/new" element={<CreateProduct />} />
       <Route path="listings/edit/:id" element={<CreateProduct />} />

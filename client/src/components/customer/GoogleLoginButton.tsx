@@ -13,11 +13,16 @@ export default function GoogleLoginButton({ role, disabled, text }: GoogleLoginB
 
   const handleGoogleRedirect = () => {
     setLoading(true);
-    localStorage.setItem('poultry_oauth_role', role);
-    sessionStorage.setItem('poultry_oauth_role', role);
+    const validRole = role === 'seller' || role === 'rider' ? role : 'customer';
+    ['role', 'pending_role', 'poultry_oauth_role', 'poultry_role_override', 'oauth_role'].forEach((k) => {
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
+    });
+    sessionStorage.setItem('poultry_oauth_role', validRole);
+    localStorage.setItem('poultry_oauth_role', validRole);
     const baseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}`;
     const apiBase = baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
-    window.location.href = `${apiBase}/auth/google/redirect?role=${role}`;
+    window.location.href = `${apiBase}/auth/google/redirect?role=${encodeURIComponent(validRole)}`;
   };
 
   return (

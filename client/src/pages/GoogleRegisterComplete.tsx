@@ -3,13 +3,15 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AuthLayout from '../components/customer/AuthLayout';
 import api from '../lib/axios';
+import { getDestinationForUser, getStoredUser } from '../utils/authRedirect';
 
 const GoogleRegisterComplete: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user: authUser, googleLogin } = useAuth();
+  const { user: contextUser, googleLogin } = useAuth();
+  const authUser = getStoredUser(contextUser);
 
-  const googleId = searchParams.get('google_id') || authUser?.google_id || (authUser?.id ? String(authUser.id) : '');
+  const googleId = searchParams.get('google_id') || authUser?.google_id || (authUser?.id ? String(authUser.id) : 'seller_oauth');
   const initialEmail = searchParams.get('email') || authUser?.email || '';
   const initialFullname = searchParams.get('fullname') || authUser?.fullname || '';
   const role = searchParams.get('role') || (authUser?.role === 'reseller' ? 'seller' : authUser?.role) || 'seller';
@@ -96,16 +98,7 @@ const GoogleRegisterComplete: React.FC = () => {
       const { user, token } = res.data;
       localStorage.removeItem('poultry_role_override');
       googleLogin(user, token);
-
-      if (user.role === 'customer') {
-        navigate('/customer', { replace: true });
-      } else if (user.role === 'seller' || user.role === 'reseller') {
-        const status = (user.status || '').toLowerCase();
-        const isApproved = status === 'verified' || status === 'approved' || status === 'active';
-        navigate(isApproved ? '/seller/dashboard' : '/account-status', { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
+      navigate(getDestinationForUser(user), { replace: true });
     } catch (err: any) {
       const errorData = err?.response?.data;
       if (errorData?.errors) {
